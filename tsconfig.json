@@ -37,6 +37,15 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "skills",
+    "workspace",
+    "tool-results",
+    "upload",
+    "api_patched",
+    "work_inspect",
+    "work_verify4",
+    "download",
+    "scripts"
   ]
 }
