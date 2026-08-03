@@ -34,15 +34,20 @@ export async function requireUser(): Promise<Profile> {
 }
 
 /**
- * Check if the given email is in the SUPABASE_ADMIN_EMAILS env var.
+ * Check if the given email is an admin.
+ * Checks both SUPABASE_ADMIN_EMAILS (comma-separated list) AND the
+ * single ADMIN_EMAIL env var (used for auto-provisioned admin login).
  */
 export function isAdminEmail(email: string): boolean {
-  const adminEmails = process.env.SUPABASE_ADMIN_EMAILS ?? ''
-  const list = adminEmails
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean)
-  return list.includes(email.toLowerCase())
+  const target = email.toLowerCase()
+  const list = [
+    ...(process.env.SUPABASE_ADMIN_EMAILS ?? '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean),
+    (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase(),
+  ].filter(Boolean)
+  return list.includes(target)
 }
 
 /**

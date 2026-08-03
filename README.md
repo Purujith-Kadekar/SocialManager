@@ -75,10 +75,23 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ### 5. Create your admin account
 
+**Option A — Auto-provisioned admin (recommended, no signup needed):**
+
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your `.env.local` (or Vercel env vars), then go straight to `/login` and enter those credentials. On first login, the user is automatically created in Supabase Auth with `email_confirm: true` — no email confirmation needed. If you later change the env vars, the password is synced on next login.
+
+```env
+ADMIN_EMAIL=your-admin-email@example.com
+ADMIN_PASSWORD=your-strong-password
+```
+
+**Option B — Manual signup:**
+
 1. Go to `/signup` and create an account with your admin email
 2. Check your email and click the confirmation link
 3. Sign in at `/login`
 4. Your email is automatically admin because it's in `SUPABASE_ADMIN_EMAILS`
+
+> If the email confirmation link lands on `/?code=...` instead of redirecting to `/dashboard`, the app has a safety-net handler on `/` that will exchange the code client-side and redirect you. You can also add `https://your-app.vercel.app/api/auth/callback` to Supabase → Authentication → URL Configuration → Redirect URLs to make the redirect go directly to the callback route.
 
 ### 6. Sync all 310 Ferdium recipes
 
@@ -112,7 +125,9 @@ The "Add Service" screen will now show all 310 recipes from YOUR API.
 | `NEXT_PUBLIC_SUPABASE_URL` | YES | Your Supabase project URL (e.g. `https://abcdefgh.supabase.co`) — no `/rest/v1/` suffix |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | YES | Supabase anon public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | YES | Server-only — never expose to the browser |
-| `SUPABASE_ADMIN_EMAILS` | YES | Comma-separated admin emails |
+| `SUPABASE_ADMIN_EMAILS` | optional | Comma-separated admin emails (legacy, you can use ADMIN_EMAIL instead) |
+| `ADMIN_EMAIL` | recommended | Single admin email — used with ADMIN_PASSWORD for auto-provisioned login |
+| `ADMIN_PASSWORD` | recommended | Single admin password — auto-provisions the user on first login |
 | `NEXT_PUBLIC_APP_URL` | YES | Your Vercel deployment URL |
 | `SUPABASE_STORAGE_BUCKET` | optional | Defaults to `recipe-packages` |
 | `AUTH_SECRET` | optional | Needed only if you use NextAuth features |

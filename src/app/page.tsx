@@ -4,10 +4,17 @@ import { ArrowRight, Download, Server, Shield, Zap, Github, MessageCircle } from
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AuthCodeHandler } from '@/components/auth-code-handler'
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* Email verification safety net — catches ?code= on the homepage
+          in case Supabase falls back to Site URL instead of /api/auth/callback */}
+      <Suspense fallback={null}>
+        <AuthCodeHandler />
+      </Suspense>
+
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
