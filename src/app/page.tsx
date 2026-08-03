@@ -1,5 +1,3 @@
-import Link from 'next/link'
-
 export const dynamic = 'force-dynamic'
 
 export default function HomePage() {
@@ -36,21 +34,6 @@ export default function HomePage() {
               GitHub
             </a>
           </nav>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm text-slate-300 transition hover:text-white"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/api/v1/recipes"
-              className="rounded-md bg-indigo-gradient px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-900/40 transition hover:opacity-90"
-            >
-              Get Started →
-            </Link>
-          </div>
         </header>
 
         {/* ============ HERO ============ */}
@@ -71,21 +54,6 @@ export default function HomePage() {
             Telegram, Discord, Slack, Gmail, and 300+ more services into a single
             unified inbox. This is the recipe API that powers it.
           </p>
-
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/api/v1/recipes"
-              className="w-full rounded-lg bg-indigo-gradient px-6 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-900/40 transition hover:opacity-90 sm:w-auto"
-            >
-              Get Started Free
-            </Link>
-            <a
-              href="/api/v1/recipes"
-              className="w-full rounded-lg border border-indigo-700/40 bg-white/5 px-6 py-3 text-sm font-medium text-slate-200 backdrop-blur transition hover:bg-white/10 sm:w-auto"
-            >
-              Browse API
-            </a>
-          </div>
 
           <ul className="mx-auto mt-10 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-300">
             <li className="inline-flex items-center gap-2">
