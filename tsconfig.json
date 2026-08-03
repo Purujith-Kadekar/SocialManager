@@ -37,10 +37,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "skills",
-    "workspace",
-    "tool-results",
-    "upload"
+    "node_modules"
   ]
 }

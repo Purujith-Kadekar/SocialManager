@@ -51,66 +51,65 @@
   --card-foreground: oklch(0.145 0.02 280);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.02 280);
-  /* Indigo-600 family: #5838B8 / #7E57C2 (matches uploaded brand icons) */
-  --primary: oklch(0.48 0.22 295);
+  --primary: oklch(0.55 0.2 295);
   --primary-foreground: oklch(0.99 0.005 280);
-  --secondary: oklch(0.96 0.015 295);
-  --secondary-foreground: oklch(0.205 0.03 295);
+  --secondary: oklch(0.96 0.01 280);
+  --secondary-foreground: oklch(0.205 0.02 280);
   --muted: oklch(0.96 0.01 280);
   --muted-foreground: oklch(0.55 0.02 280);
-  --accent: oklch(0.93 0.04 295);
-  --accent-foreground: oklch(0.40 0.20 295);
+  --accent: oklch(0.93 0.03 295);
+  --accent-foreground: oklch(0.4 0.18 295);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.015 280);
-  --input: oklch(0.92 0.015 280);
-  --ring: oklch(0.48 0.22 295);
-  --chart-1: oklch(0.48 0.22 295);
+  --border: oklch(0.92 0.01 280);
+  --input: oklch(0.92 0.01 280);
+  --ring: oklch(0.55 0.2 295);
+  --chart-1: oklch(0.55 0.2 295);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0.005 280);
   --sidebar-foreground: oklch(0.145 0.02 280);
-  --sidebar-primary: oklch(0.48 0.22 295);
+  --sidebar-primary: oklch(0.55 0.2 295);
   --sidebar-primary-foreground: oklch(0.99 0.005 280);
-  --sidebar-accent: oklch(0.93 0.04 295);
-  --sidebar-accent-foreground: oklch(0.40 0.20 295);
-  --sidebar-border: oklch(0.92 0.015 280);
-  --sidebar-ring: oklch(0.48 0.22 295);
+  --sidebar-accent: oklch(0.93 0.03 295);
+  --sidebar-accent-foreground: oklch(0.4 0.18 295);
+  --sidebar-border: oklch(0.92 0.01 280);
+  --sidebar-ring: oklch(0.55 0.2 295);
 }
 
 .dark {
   --background: oklch(0.14 0.015 280);
   --foreground: oklch(0.97 0.005 280);
-  --card: oklch(0.19 0.025 295);
+  --card: oklch(0.19 0.02 280);
   --card-foreground: oklch(0.97 0.005 280);
-  --popover: oklch(0.19 0.025 295);
+  --popover: oklch(0.19 0.02 280);
   --popover-foreground: oklch(0.97 0.005 280);
-  --primary: oklch(0.65 0.20 295);
+  --primary: oklch(0.65 0.2 295);
   --primary-foreground: oklch(0.14 0.015 280);
-  --secondary: oklch(0.24 0.03 295);
+  --secondary: oklch(0.24 0.02 280);
   --secondary-foreground: oklch(0.97 0.005 280);
   --muted: oklch(0.24 0.02 280);
   --muted-foreground: oklch(0.68 0.015 280);
-  --accent: oklch(0.28 0.05 295);
-  --accent-foreground: oklch(0.85 0.08 295);
+  --accent: oklch(0.28 0.04 295);
+  --accent-foreground: oklch(0.85 0.05 295);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.20 295);
-  --chart-1: oklch(0.65 0.20 295);
+  --ring: oklch(0.65 0.2 295);
+  --chart-1: oklch(0.65 0.2 295);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.19 0.025 295);
+  --sidebar: oklch(0.19 0.02 280);
   --sidebar-foreground: oklch(0.97 0.005 280);
-  --sidebar-primary: oklch(0.65 0.20 295);
+  --sidebar-primary: oklch(0.65 0.2 295);
   --sidebar-primary-foreground: oklch(0.14 0.015 280);
-  --sidebar-accent: oklch(0.24 0.03 295);
+  --sidebar-accent: oklch(0.24 0.02 280);
   --sidebar-accent-foreground: oklch(0.97 0.005 280);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.65 0.20 295);
+  --sidebar-ring: oklch(0.65 0.2 295);
 }
 
 @layer base {
@@ -122,20 +121,16 @@
   }
 }
 
-/* Indigo brand gradients.
-   Colors match the user-uploaded brand icons (#5838B8 / #7E57C2 family).
-   Class names use 'indigo' to match the actual color, unlike the previous
-   misnomer where 'indigo' classes were colored amber. */
 .bg-indigo-gradient {
-  background: linear-gradient(135deg, #4527A0 0%, #5838B8 50%, #7E57C2 100%);
+  background: linear-gradient(135deg, #5E35B1 0%, #7E57C2 50%, #9575CD 100%);
 }
 
 .bg-indigo-radial {
-  background: radial-gradient(ellipse at top, rgba(126, 87, 194, 0.20), transparent 70%);
+  background: radial-gradient(ellipse at top, rgba(126, 87, 194, 0.15), transparent 70%);
 }
 
 .text-indigo-gradient {
-  background: linear-gradient(135deg, #7E57C2 0%, #5838B8 50%, #4527A0 100%);
+  background: linear-gradient(135deg, #9575CD 0%, #7E57C2 50%, #5E35B1 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

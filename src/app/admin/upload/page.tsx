@@ -1,66 +1,60 @@
-import { requireAdmin } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { MessageCircle, Shield, Upload, LogOut, ArrowLeft } from 'lucide-react'
+import { getProfile, isAdminEmail } from '@/lib/auth'
+import { Button } from '@/components/ui/button'
+import { UploadForm } from '@/components/admin/upload-form'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminUploadPage() {
-  await requireAdmin()
+  const profile = await getProfile()
+  if (!profile) redirect('/login')
+
+  const isAdmin = profile.is_admin || isAdminEmail(profile.email)
+  if (!isAdmin) redirect('/?error=admin_required')
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-indigo-radial">
-      <div className="pointer-events-none absolute inset-0 bg-grid opacity-60" />
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1 bg-indigo-gradient" />
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="border-b border-border/40">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-indigo-gradient flex items-center justify-center">
+              <MessageCircle className="h-5 w-5 text-white" />
+            </div>
+            <span className="font-bold">SocialManager</span>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded ml-2">Admin</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/admin/recipes">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Recipes
+              </Link>
+            </Button>
+            <form action="/api/auth/logout" method="POST">
+              <Button type="submit" variant="ghost" size="sm">
+                <LogOut className="h-4 w-4 mr-1" />
+                Sign out
+              </Button>
+            </form>
+          </div>
+        </div>
+      </header>
 
-      <main className="relative mx-auto max-w-2xl px-6 py-16">
-        <h1 className="text-3xl font-bold text-white">Upload custom recipe</h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Upload a .tar.gz recipe package. Max size 50 MB.
-        </p>
-        <form className="mt-8 space-y-4" action="/api/admin/recipes" method="POST" encType="multipart/form-data">
-          <div>
-            <label className="block text-sm font-medium text-slate-300">Recipe ID</label>
-            <input
-              type="text"
-              name="id"
-              required
-              placeholder="e.g. my-custom-service"
-              className="mt-1 block w-full rounded-md border border-indigo-900/50 bg-indigo-950/40 px-3 py-2 text-sm text-white placeholder-slate-500 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+      <main className="container mx-auto px-4 py-10 flex-1">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-2 mb-2">
+            <Upload className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold">Upload Recipe</h1>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300">Display name</label>
-            <input
-              type="text"
-              name="name"
-              required
-              placeholder="e.g. My Custom Service"
-              className="mt-1 block w-full rounded-md border border-indigo-900/50 bg-indigo-950/40 px-3 py-2 text-sm text-white placeholder-slate-500 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300">Description (optional)</label>
-            <input
-              type="text"
-              name="description"
-              className="mt-1 block w-full rounded-md border border-indigo-900/50 bg-indigo-950/40 px-3 py-2 text-sm text-white placeholder-slate-500 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300">.tar.gz file</label>
-            <input
-              type="file"
-              name="file"
-              accept=".tar.gz,.tgz,application/gzip"
-              required
-              className="mt-1 block w-full text-sm text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-gradient file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:opacity-90"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-md bg-indigo-gradient px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-900/40 transition hover:opacity-90"
-          >
-            Upload recipe
-          </button>
-        </form>
+          <p className="text-muted-foreground mb-8">
+            Upload a custom recipe package (.tar.gz) with metadata.
+            The recipe will appear in the catalog immediately.
+          </p>
+
+          <UploadForm />
+        </div>
       </main>
     </div>
   )

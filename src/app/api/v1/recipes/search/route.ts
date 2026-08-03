@@ -1,35 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server'
+/**
+ * GET /api/v1/recipes/search?needle=whatsapp
+ *
+ * Search recipes by name. Returns matching approved recipes.
+ * Ferdium-compatible format: includes icons.svg URL.
+ *
+ * Special needle: "socialmanager:custom" returns only custom (user-uploaded) recipes.
+ */
+import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { Recipe } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+const ICON_CDN_BASE =
+  'https://cdn.jsdelivr.net/gh/ferdium/ferdium-recipes/recipes'
+
+function iconUrlFor(recipeId: string): string {
+  return `${ICON_CDN_BASE}/${recipeId}/icon.svg`
+}
+
+export async function GET(request: Request) {
   try {
-    const needle = request.nextUrl.searchParams.get('needle')
+    const { searchParams } = new URL(request.url)
+    const needle = searchParams.get('needle')
+
     if (!needle) {
       return NextResponse.json(
-        { error: 'Missing "needle" query parameter' },
-        { status: 400 }
+        { message: 'Please provide a needle', status: 401 },
+        { status: 401 }
       )
     }
 
     const supabase = createAdminClient()
-    const { data, error } = await supabase
-      .from('recipes')
-      .select('id, name, description, author, icon_url, is_featured')
-      .eq('is_approved', true)
-      .ilike('name', `%${needle}%`)
-      .order('name')
-      .limit(50)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    let query = supabase
+      .from('recipes')
+      .select('*')
+      .eq('is_approved', true)
+
+    if (needle === 'socialmanager:custom') {
+      query = query.eq('is_custom', true)
+    } else {
+      // Case-insensitive substring search
+      query = query.ilike('name', `%${needle}%`)
     }
 
-    return NextResponse.json(data)
+    const { data: recipes, error } = await query.order('name', { ascending: true })
+
+    if (error) {
+      console.error('[/api/v1/recipes/search] DB error:', error)
+      return NextResponse.json(
+        { error: 'Failed to search recipes' },
+        { status: 500 }
+      )
+    }
+
+    const formatted = (recipes as Recipe[]).map(r => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      category: r.category,
+      author: r.author,
+      website: r.website,
+      icon: r.icon_url,
+      featured: r.is_featured,
+      icons: {
+        svg: iconUrlFor(r.id),
+      },
+      ...r.recipe_metadata,
+    }))
+
+    return NextResponse.json(formatted)
   } catch (err) {
+    console.error('[/api/v1/recipes/search] fatal:', err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

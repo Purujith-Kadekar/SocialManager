@@ -1,82 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server'
-import {
-  verifyAdminCredentials,
-  createSessionToken,
-  setAdminSessionCookie,
-} from '@/lib/auth'
+/**
+ * POST /api/auth/login
+ * Body: { email, password }
+ *
+ * Signs in with email/password.
+ */
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * POST /api/auth/login
- *
- * Body: { email, password }
- *
- * Compares credentials against the ADMIN_EMAIL / ADMIN_PASSWORD env vars.
- * No Supabase Auth call is made — the admin identity lives entirely in
- * environment variables, so there is no Supabase user row to look up,
- * no service-role key required, and no risk of `auth.admin.getUserByEmail`
- * style errors.
- *
- * On success: signs an HMAC session cookie, returns { ok: true }.
- * On failure: returns 401 with a generic "Invalid credentials" message.
- */
-export async function POST(request: NextRequest) {
-  let email = ''
-  let password = ''
-
+export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    email = String(body?.email ?? '')
-    password = String(body?.password ?? '')
-  } catch {
-    return NextResponse.json(
-      { error: 'Invalid request body — JSON expected.' },
-      { status: 400 }
-    )
-  }
+    const { email, password } = await request.json()
 
-  if (!email || !password) {
-    return NextResponse.json(
-      { error: 'Email and password are required.' },
-      { status: 400 }
-    )
-  }
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
+    }
 
-  // Surface missing env vars explicitly so deployment issues are obvious
-  // instead of masquerading as "wrong password".
-  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-    return NextResponse.json(
-      {
-        error: 'Server is missing ADMIN_EMAIL / ADMIN_PASSWORD env vars.',
-        env_hint: {
-          has_admin_email: Boolean(process.env.ADMIN_EMAIL),
-          has_admin_password: Boolean(process.env.ADMIN_PASSWORD),
-        },
-      },
-      { status: 500 }
-    )
-  }
+    const supabase = await createClient()
 
-  if (!verifyAdminCredentials(email, password)) {
-    return NextResponse.json(
-      { error: 'Invalid credentials.' },
-      { status: 401 }
-    )
-  }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-  let token: string
-  try {
-    token = createSessionToken()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
+
+    return NextResponse.json({
+      user: data.user,
+      session: data.session,
+    })
   } catch (err) {
-    return NextResponse.json(
-      {
-        error: err instanceof Error ? err.message : 'Failed to sign session.',
-      },
-      { status: 500 }
-    )
+    console.error('[/api/auth/login] fatal:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  await setAdminSessionCookie(token)
-  return NextResponse.json({ ok: true })
 }

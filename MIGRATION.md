@@ -33,8 +33,9 @@ Success. No rows returned.
 | Object | Purpose |
 |--------|---------|
 | `public.profiles` | User profiles (extends `auth.users`) |
-| `public.recipes` | Recipe catalog (410 Ferdium recipes + custom uploads) |
+| `public.recipes` | Recipe catalog (310 Ferdium recipes + custom uploads) |
 | `public.user_services` | Per-user service configurations for cross-device sync |
+| `public.storage_usage` | View showing total storage used |
 | `storage.buckets: recipe-packages` | Private bucket for .tar.gz recipe files |
 | RLS policies | Row-level security on all tables |
 | `handle_new_user()` trigger | Auto-creates profile on signup |
@@ -69,6 +70,28 @@ Success. No rows returned.
 3. Add these to **Redirect URLs**:
    - `http://localhost:3000/api/auth/callback`
    - `https://your-app.vercel.app/api/auth/callback`
+
+### Google OAuth (optional)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project (or use existing)
+3. Enable **Google+ API**
+4. Go to **Credentials → Create Credentials → OAuth client ID**
+5. Choose **Web application**
+6. Add authorized redirect URI:
+   ```
+   https://your-project.supabase.co/auth/v1/callback
+   ```
+   (replace `your-project` with your actual Supabase project ref)
+7. Copy the **Client ID** and **Client Secret**
+8. Back in Supabase: **Authentication → Providers → Google**
+   - Toggle ON
+   - Paste Client ID and Client Secret
+9. In your `.env.local`:
+   ```env
+   GOOGLE_CLIENT_ID=your-client-id
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   ```
 
 ## Step 5: Set environment variables
 
@@ -114,28 +137,30 @@ AUTH_SECRET=your-random-32-char-string
 
 ## Step 7: Sync recipes
 
-Run the sync script to import all 410+ Ferdium recipes:
+Run the sync script to import all 310 Ferdium recipes:
 
 ```bash
 npm run sync-recipes
 ```
 
 This will:
-1. Download the `ferdium/ferdium-recipes` GitHub repo as a tarball (~9 MB)
-2. Extract and repackage each recipe folder as `{id}.tar.gz`
+1. Fetch the recipe catalog from `api.ferdium.org`
+2. Download each `.tar.gz` package
 3. Upload to your Supabase Storage bucket
 4. Insert metadata into the `recipes` table
 
-Takes 2-5 minutes. You'll see progress like:
+Takes 5-10 minutes. You'll see progress like:
 ```
-[1/411] ✅ air-droid              3 KB  AirDroid
-[2/411] ✅ airmessage             2 KB  AirMessage
+[1/310] ✅ whatsapp           15 KB  WhatsApp
+[2/310] ✅ telegram           22 KB  Telegram
 ...
 ```
 
-After completion, refresh `/admin` — you'll see 411 recipes and ~10MB used (out of 5GB).
+After completion, refresh `/admin` — you'll see 310 recipes and ~10MB used (out of 5GB).
 
 ## Step 8: Promote another user to admin (optional)
+
+If you want to add more admins later, you have two options:
 
 **Option A**: Add their email to `SUPABASE_ADMIN_EMAILS` env var (no restart needed, checked at runtime)
 
@@ -171,11 +196,21 @@ If not, re-run the migration SQL.
 
 ### sync-recipes fails with "fetch failed"
 
-Your internet may have dropped, or GitHub is rate-limiting you. Wait a minute and re-run — the script is idempotent, so already-synced recipes are skipped.
+The Ferdium API might be down. Check:
+```bash
+curl https://api.ferdium.org/v1/recipes
+```
 
-### Build fails on Vercel with "Missing env vars"
+If it returns JSON, the API is up. The issue might be rate limiting — wait a minute and re-run.
 
-You MUST set all environment variables in the Vercel dashboard BEFORE clicking Deploy. Add them in the "Environment Variables" section during project import. See README.md for the full list.
+### Google OAuth redirect fails
+
+Make sure the redirect URI in Google Cloud Console matches exactly:
+```
+https://your-project.supabase.co/auth/v1/callback
+```
+
+And that `NEXT_PUBLIC_APP_URL` in `.env.local` matches your actual app URL.
 
 ## Verifying RLS policies
 
@@ -221,3 +256,16 @@ public.recipes
     recipe_metadata (JSONB)
     is_official / is_custom / is_featured
 ```
+
+## Backup
+
+To backup your database:
+```bash
+# Export all recipes
+pg_dump "postgresql://postgres:[password]@db.[project].supabase.co:5432/postgres" \
+  --table=public.recipes \
+  --data-only \
+  > recipes_backup.sql
+```
+
+Or use Supabase's built-in backup: **Database → Backups**

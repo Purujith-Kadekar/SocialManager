@@ -1,20 +1,24 @@
 /**
  * Recipe Sync Script (v2 — GitHub archive source)
  * ================================================
- * Ferdium's recipe download API is currently broken (HTTP 400 for every recipe),
- * so we pull the canonical recipe source code directly from GitHub instead.
+ * The Ferdium API at https://api.ferdium.org/v1/recipes/download/{id} is
+ * currently returning HTTP 400 "Recipe not found" for every recipe, so we
+ * pull the canonical recipe source code directly from GitHub instead.
  *
  * Strategy:
- *   1. (Optional) Fetch the catalog from api.ferdium.org for the `featured` flag.
- *   2. Download the entire ferdium-recipes repo as a single tarball from GitHub.
+ *   1. Fetch the recipe catalog from api.ferdium.org (gives us the canonical
+ *      `featured` flag + the 310 "official" recipe IDs).
+ *   2. Download the entire ferdium-recipes repo as a single tarball from
+ *      GitHub (~9 MB, one request).
  *   3. Extract to a temp dir.
- *   4. For each recipe folder, read its package.json + repack as {id}.tar.gz.
+ *   4. For each recipe folder, read its package.json + repack the folder as
+ *      {id}.tar.gz (the format the SocialManager desktop app expects).
  *   5. Upload to Supabase Storage + insert metadata into Postgres.
  *
  * Usage:
  *   npm run sync-recipes
  *
- * Required env vars (loaded from .env.local):
+ * Environment variables required (loaded from .env.local automatically):
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  *   SUPABASE_STORAGE_BUCKET (default: recipe-packages)
@@ -22,6 +26,8 @@
 
 import { config } from 'dotenv'
 import { resolve } from 'path'
+
+// Load .env.local (Next.js convention) — tsx does not auto-load env files.
 config({ path: resolve(process.cwd(), '.env.local') })
 
 import { createClient } from '@supabase/supabase-js'
@@ -31,11 +37,13 @@ import { join } from 'path'
 import { pipeline } from 'stream/promises'
 import * as tar from 'tar'
 
+// --- Config ---
 const FERDIUM_CATALOG_URL = 'https://api.ferdium.org/v1/recipes'
 const GITHUB_ARCHIVE_URL  = 'https://github.com/ferdium/ferdium-recipes/archive/refs/heads/main.tar.gz'
-const ARCHIVE_ROOT_FOLDER = 'ferdium-recipes-main'
-const RECIPES_SUBPATH     = 'recipes'
+const ARCHIVE_ROOT_FOLDER = 'ferdium-recipes-main'  // GitHub names it {repo}-{ref}/
+const RECIPES_SUBPATH     = 'recipes'                // .../recipes/{id}/ inside archive
 
+// --- Supabase client ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
 const bucket      = process.env.SUPABASE_STORAGE_BUCKET ?? 'recipe-packages'
@@ -48,6 +56,16 @@ if (!supabaseUrl || !serviceKey) {
 const supabase = createClient(supabaseUrl, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
+
+// --- Types ---
+type FerdiumRecipe = {
+  id: string
+  name: string
+  version?: string
+  featured?: boolean
+  icons?: { svg?: string; png?: string }
+  [key: string]: unknown
+}
 
 type RecipePackageJson = {
   id: string
@@ -68,9 +86,11 @@ type RecipePackageJson = {
   }
 }
 
+// --- Helpers ---
 async function downloadFile(url: string, dest: string): Promise<void> {
   const res = await fetch(url, {
     headers: {
+      // Some hosts (Ferdium, GitHub) reject bare Node fetch UA
       'User-Agent': 'SocialManager-RecipeSync/1.0',
       'Accept': '*/*',
     },
@@ -86,6 +106,7 @@ function getAuthorString(author?: RecipePackageJson['author']): string | null {
   return author.name ?? author.url ?? null
 }
 
+// --- Main ---
 async function main() {
   console.log('🚀 Starting SocialManager recipe sync (GitHub source)...')
   console.log(`   Source:  ${GITHUB_ARCHIVE_URL}`)
@@ -93,6 +114,8 @@ async function main() {
   console.log('')
 
   // 1. OPTIONAL: fetch Ferdium catalog for the `featured` flag.
+  // If Ferdium is rate-limiting you (HTTP 403/429 — common after a failed run),
+  // we just skip it and treat every recipe as non-featured. Not a big deal.
   let featuredIds = new Set<string>()
   let catalogIds  = new Set<string>()
   console.log('📥 Fetching Ferdium recipe catalog (optional, for featured flag)...')
@@ -100,10 +123,12 @@ async function main() {
     const catalogRes = await fetch(FERDIUM_CATALOG_URL, {
       headers: { 'User-Agent': 'SocialManager-RecipeSync/1.0' },
     })
-    if (!catalogRes.ok) throw new Error(`HTTP ${catalogRes.status}`)
-    const catalog = await catalogRes.json()
-    featuredIds = new Set(catalog.filter((r: { featured?: boolean }) => r.featured).map((r: { id: string }) => r.id))
-    catalogIds  = new Set(catalog.map((r: { id: string }) => r.id))
+    if (!catalogRes.ok) {
+      throw new Error(`HTTP ${catalogRes.status}`)
+    }
+    const catalog: FerdiumRecipe[] = await catalogRes.json()
+    featuredIds = new Set(catalog.filter(r => r.featured).map(r => r.id))
+    catalogIds  = new Set(catalog.map(r => r.id))
     console.log(`✅ Catalog fetched: ${catalog.length} recipes (${featuredIds.size} featured)`)
   } catch (err) {
     console.log(`⚠️  Catalog fetch failed (${err instanceof Error ? err.message : 'unknown'}) — continuing without it.`)
@@ -131,11 +156,12 @@ async function main() {
   const recipesDir = join(extractDir, ARCHIVE_ROOT_FOLDER, RECIPES_SUBPATH)
   if (!existsSync(recipesDir)) {
     console.error(`❌ Expected recipes folder not found at: ${recipesDir}`)
-    console.error(`   Archive layout may have changed. Inspect: tar -tzf ${archiveTarball} | head -20`)
+    console.error('   Archive layout may have changed. Inspect:')
+    console.error(`   tar -tzf ${archiveTarball} | head -20`)
     process.exit(1)
   }
 
-  // 4. List recipe folders
+  // 4. List all recipe folders in the archive
   const allRecipeFolders = readdirSync(recipesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.'))
     .map(d => d.name)
@@ -152,8 +178,8 @@ async function main() {
 
   if (toSync.length === 0) {
     console.log('✅ All recipes are already synced. Nothing to do.')
-    rmSync(tmpRoot, { recursive: true, force: true })
-    process.exit(0)
+    await rmSync(tmpRoot, { recursive: true, force: true })
+    return
   }
 
   // 6. Sync each recipe
@@ -167,6 +193,7 @@ async function main() {
     const recipeFolder = join(recipesDir, recipeId)
 
     try {
+      // Read package.json for accurate metadata
       const pkgPath = join(recipeFolder, 'package.json')
       if (!existsSync(pkgPath)) {
         console.log(`${progress} ⚠️  SKIP ${recipeId} — no package.json in folder`)
@@ -175,8 +202,10 @@ async function main() {
       }
       const pkg: RecipePackageJson = JSON.parse(readFileSync(pkgPath, 'utf8'))
 
-      // Pack CONTENTS of recipe folder (not the folder itself) so package.json
-      // sits at the tarball root — this is what the desktop app expects.
+      // Pack the recipe folder into {id}.tar.gz.
+      // The SocialManager desktop app extracts this directly into a temp dir
+      // and then reads `package.json` from the root, so we pack the *contents*
+      // of the recipe folder (cwd = recipe folder), not the folder itself.
       const localTarball = join(tmpRoot, `${recipeId}.tar.gz`)
       const filesInFolder = readdirSync(recipeFolder).filter(f => !f.startsWith('.'))
       await tar.c({
@@ -189,7 +218,9 @@ async function main() {
       const sizeKB = (fileBytes / 1024).toFixed(0)
       totalBytes += fileBytes
 
+      // Read back as buffer for Supabase upload
       const fileBuffer = readFileSync(localTarball)
+
       const storagePath = `${recipeId}.tar.gz`
       const { error: uploadError } = await supabase
         .storage
@@ -205,6 +236,7 @@ async function main() {
         continue
       }
 
+      // Insert into DB
       const isFeatured = featuredIds.has(recipeId)
       const isOfficial = catalogIds.has(recipeId)
       const cfg = pkg.config ?? {}
@@ -253,11 +285,13 @@ async function main() {
       failed++
     }
 
+    // Tiny delay every 25 recipes to be nice to Supabase
     if ((i + 1) % 25 === 0) {
       await new Promise(r => setTimeout(r, 200))
     }
   }
 
+  // 7. Summary
   console.log('')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log('📊 Sync complete!')
@@ -267,7 +301,12 @@ async function main() {
   console.log(`   📦 Total recipes in DB: ${existingIds.size + success}`)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
+  // Cleanup
   rmSync(tmpRoot, { recursive: true, force: true })
+
+  // Force clean exit — Node on Windows sometimes throws a libuv assertion
+  // ("!(handle->flags & UV_HANDLE_CLOSING)") if there are pending async
+  // handles (Supabase client keep-alive sockets, etc.) when the process exits.
   process.exit(0)
 }
 

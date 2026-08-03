@@ -1,186 +1,249 @@
-import { NextRequest, NextResponse } from 'next/server'
+/**
+ * POST /api/admin/recipes
+ *
+ * Upload a new custom recipe.
+ * Multipart form data:
+ *   - file: the recipe .tar.gz file
+ *   - metadata: JSON string with { id, name, description, category, ... }
+ *
+ * Requires admin auth.
+ */
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import {
-  STORAGE_LIMIT_BYTES,
-  requireAdminOr401,
-} from '@/lib/auth'
+import { isAdminEmail } from '@/lib/auth'
+import { STORAGE_LIMIT_BYTES } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * GET /api/admin/recipes
- * Returns the full catalog with storage stats. Admin-only.
- */
-export async function GET(request: NextRequest) {
-  const unauthorized = requireAdminOr401(request)
-  if (unauthorized) return unauthorized
-
+export async function POST(request: Request) {
   try {
-    const admin = createAdminClient()
-    const { data: recipes, error } = await admin
-      .from('recipes')
-      .select('id, name, file_size_bytes, is_custom, is_official, created_at')
-      .order('created_at', { ascending: false })
+    // Auth check
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const list = recipes ?? []
-    const totalBytes = list.reduce((sum, r: any) => sum + (r.file_size_bytes ?? 0), 0)
-    const customCount = list.filter((r: any) => r.is_custom).length
+    // Check admin via env var whitelist OR is_admin flag
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
 
-    return NextResponse.json({
-      total_bytes: totalBytes,
-      total_mb: (totalBytes / 1024 / 1024).toFixed(2),
-      limit_bytes: STORAGE_LIMIT_BYTES,
-      limit_mb: STORAGE_LIMIT_BYTES / 1024 / 1024,
-      percent_used: ((totalBytes / STORAGE_LIMIT_BYTES) * 100).toFixed(2),
-      available_bytes: STORAGE_LIMIT_BYTES - totalBytes,
-      file_count: list.length,
-      custom_count: customCount,
-      recipes: list,
-    })
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Server error' },
-      { status: 500 }
-    )
-  }
-}
+    if (!profile?.is_admin && !isAdminEmail(user.email ?? '')) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      )
+    }
 
-/**
- * POST /api/admin/recipes
- * Upload a new custom recipe. Admin-only.
- */
-export async function POST(request: NextRequest) {
-  const unauthorized = requireAdminOr401(request)
-  if (unauthorized) return unauthorized
-
-  try {
+    // Parse multipart form
     const formData = await request.formData()
     const file = formData.get('file') as File | null
-    const id = formData.get('id') as string | null
-    const name = formData.get('name') as string | null
+    const metadataStr = formData.get('metadata') as string | null
 
-    if (!file || !id || !name) {
-      return NextResponse.json({ error: 'file, id, and name are required' }, { status: 400 })
+    if (!file) {
+      return NextResponse.json({ error: 'File is required' }, { status: 400 })
     }
 
-    const admin = createAdminClient()
+    if (!metadataStr) {
+      return NextResponse.json({ error: 'Metadata is required' }, { status: 400 })
+    }
 
-    // Check storage limit BEFORE uploading.
-    const { data: existing } = await admin
+    let metadata: {
+      id: string
+      name: string
+      description?: string
+      category?: string
+      author?: string
+      website?: string
+      icon_url?: string
+      is_featured?: boolean
+      recipe_metadata?: Record<string, unknown>
+    }
+
+    try {
+      metadata = JSON.parse(metadataStr)
+    } catch {
+      return NextResponse.json({ error: 'Invalid metadata JSON' }, { status: 400 })
+    }
+
+    if (!metadata.id || !metadata.name) {
+      return NextResponse.json(
+        { error: 'metadata.id and metadata.name are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate recipe ID (no path traversal, alphanumeric + dashes only)
+    if (!/^[a-z0-9-]+$/.test(metadata.id)) {
+      return NextResponse.json(
+        { error: 'Recipe ID must be lowercase alphanumeric with dashes only' },
+        { status: 400 }
+      )
+    }
+
+    // Check storage limit (5GB Supabase free tier)
+    const adminSupabase = createAdminClient()
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'recipe-packages'
+
+    const { data: usage } = await adminSupabase
       .from('recipes')
       .select('file_size_bytes')
-    const usedBytes = (existing ?? []).reduce((sum, r: any) => sum + (r.file_size_bytes ?? 0), 0)
-    if (usedBytes + file.size > STORAGE_LIMIT_BYTES) {
+      .not('storage_path', 'is', null)
+
+    const currentBytes = (usage ?? []).reduce((sum, r) => sum + (r.file_size_bytes ?? 0), 0)
+    const newTotalBytes = currentBytes + file.size
+
+    if (newTotalBytes > STORAGE_LIMIT_BYTES) {
+      const availableMB = Math.max(0, (STORAGE_LIMIT_BYTES - currentBytes) / 1024 / 1024).toFixed(1)
       return NextResponse.json(
         {
-          error: `Upload would exceed 5GB storage limit (current: ${(usedBytes / 1024 / 1024).toFixed(2)} MB, file: ${(file.size / 1024 / 1024).toFixed(2)} MB)`,
+          error: `Storage limit exceeded. Available: ${availableMB} MB. File size: ${(file.size / 1024 / 1024).toFixed(1)} MB.`,
         },
         { status: 413 }
       )
     }
 
-    // Upload to storage.
-    const storagePath = `${id}.tar.gz`
-    const fileBuffer = Buffer.from(await file.arrayBuffer())
-    const { error: uploadError } = await admin
+    // Check if recipe already exists
+    const { data: existing } = await adminSupabase
+      .from('recipes')
+      .select('id')
+      .eq('id', metadata.id)
+      .single()
+
+    if (existing) {
+      return NextResponse.json(
+        { error: `Recipe "${metadata.id}" already exists. Use a different ID or delete the existing one first.` },
+        { status: 409 }
+      )
+    }
+
+    // Upload to Supabase Storage
+    const storagePath = `${metadata.id}.tar.gz`
+    const fileBuffer = await file.arrayBuffer()
+
+    const { error: uploadError } = await adminSupabase
       .storage
-      .from(process.env.SUPABASE_STORAGE_BUCKET ?? 'recipe-packages')
+      .from(bucket)
       .upload(storagePath, fileBuffer, {
         contentType: 'application/gzip',
-        upsert: true,
+        upsert: false,
       })
 
     if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+      console.error('[/api/admin/recipes] upload error:', uploadError)
+      return NextResponse.json(
+        { error: 'Failed to upload recipe file', details: uploadError.message },
+        { status: 500 }
+      )
     }
 
-    // Insert into DB.
-    const { data: recipe, error: dbError } = await admin
+    // Insert recipe record
+    const { data: recipe, error: dbError } = await adminSupabase
       .from('recipes')
       .insert({
-        id,
-        name,
-        description: (formData.get('description') as string | null) ?? null,
-        category: (formData.get('category') as string) ?? 'other',
-        author: (formData.get('author') as string | null) ?? null,
-        is_featured: false,
+        id: metadata.id,
+        name: metadata.name,
+        description: metadata.description ?? null,
+        category: metadata.category ?? 'other',
+        author: metadata.author ?? null,
+        website: metadata.website ?? null,
+        icon_url: metadata.icon_url ?? null,
+        is_featured: metadata.is_featured ?? false,
         is_official: false,
         is_custom: true,
         is_approved: true,
         storage_path: storagePath,
         file_size_bytes: file.size,
-        recipe_metadata: {},
+        recipe_metadata: metadata.recipe_metadata ?? {},
       })
       .select()
       .single()
 
     if (dbError) {
-      // Roll back the storage upload on DB failure.
-      await admin.storage
-        .from(process.env.SUPABASE_STORAGE_BUCKET ?? 'recipe-packages')
-        .remove([storagePath])
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+      console.error('[/api/admin/recipes] DB insert error:', dbError)
+      // Clean up the uploaded file
+      await adminSupabase.storage.from(bucket).remove([storagePath])
+      return NextResponse.json(
+        { error: 'Failed to create recipe record', details: dbError.message },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json(recipe)
+    return NextResponse.json(recipe, { status: 201 })
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Server error' },
-      { status: 500 }
-    )
+    console.error('[/api/admin/recipes] fatal:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 /**
- * DELETE /api/admin/recipes?id=<recipe-id>
- * Removes a custom recipe from storage AND the DB. Admin-only.
+ * DELETE /api/admin/recipes?id=X
+ * Delete a recipe and its storage file.
  */
-export async function DELETE(request: NextRequest) {
-  const unauthorized = requireAdminOr401(request)
-  if (unauthorized) return unauthorized
-
+export async function DELETE(request: Request) {
   try {
-    const id = request.nextUrl.searchParams.get('id')
-    if (!id) {
-      return NextResponse.json({ error: 'Missing "id" query parameter' }, { status: 400 })
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const admin = createAdminClient()
-
-    const { data: recipe } = await admin
-      .from('recipes')
-      .select('storage_path, is_custom')
-      .eq('id', id)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
       .single()
 
-    if (!recipe) {
+    if (!profile?.is_admin && !isAdminEmail(user.email ?? '')) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const recipeId = searchParams.get('id')
+
+    if (!recipeId) {
+      return NextResponse.json({ error: 'id query parameter required' }, { status: 400 })
+    }
+
+    const adminSupabase = createAdminClient()
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'recipe-packages'
+
+    // Get the recipe to find its storage path
+    const { data: recipe, error: fetchErr } = await adminSupabase
+      .from('recipes')
+      .select('storage_path, is_official')
+      .eq('id', recipeId)
+      .single()
+
+    if (fetchErr || !recipe) {
       return NextResponse.json({ error: 'Recipe not found' }, { status: 404 })
     }
 
+    // Delete from storage
     if (recipe.storage_path) {
-      await admin.storage
-        .from(process.env.SUPABASE_STORAGE_BUCKET ?? 'recipe-packages')
-        .remove([recipe.storage_path])
+      await adminSupabase.storage.from(bucket).remove([recipe.storage_path])
     }
 
-    const { error: dbError } = await admin
+    // Delete from DB
+    const { error: delErr } = await adminSupabase
       .from('recipes')
       .delete()
-      .eq('id', id)
+      .eq('id', recipeId)
 
-    if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+    if (delErr) {
+      console.error('[/api/admin/recipes DELETE] DB error:', delErr)
+      return NextResponse.json({ error: delErr.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Server error' },
-      { status: 500 }
-    )
+    console.error('[/api/admin/recipes DELETE] fatal:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
