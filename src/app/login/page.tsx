@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -39,25 +37,17 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-      <div className="text-center">
-        <h1 className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-3xl font-bold text-transparent">
-          Admin sign in
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Restricted area. Authorized admins only.
-        </p>
-      </div>
-
+    <main className="mx-auto max-w-md px-6 py-16">
+      <h1 className="text-3xl font-bold text-slate-900">Sign in</h1>
+      <p className="mt-2 text-sm text-slate-600">
+        Sign in to your SocialManager account.
+      </p>
       <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="email">
-            Email
-          </label>
+          <label className="block text-sm font-medium text-slate-700">Email</label>
           <input
-            id="email"
             type="email"
-            autoComplete="email"
+            name="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -65,38 +55,27 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="password">
-            Password
-          </label>
+          <label className="block text-sm font-medium text-slate-700">Password</label>
           <input
-            id="password"
             type="password"
-            autoComplete="current-password"
+            name="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
-
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
+          <p className="text-sm text-red-600">{error}</p>
         )}
-
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60"
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-
-      <p className="mt-6 text-center text-xs text-slate-400">
-        SocialManager API · admin only
-      </p>
     </main>
   )
 }

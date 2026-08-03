@@ -1,5 +1,4 @@
 import { requireAdmin } from '@/lib/auth'
-import { LogoutButton } from '@/components/admin/logout-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,16 +7,10 @@ export default async function AdminPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-16">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Admin</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Storage usage and recipe management.
-          </p>
-        </div>
-        <LogoutButton />
-      </div>
-
+      <h1 className="text-3xl font-bold text-slate-900">Admin</h1>
+      <p className="mt-2 text-sm text-slate-600">
+        Storage usage and recipe management.
+      </p>
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <a
           href="/admin/recipes"
