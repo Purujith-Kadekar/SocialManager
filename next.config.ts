@@ -1,17 +1,12 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  // Vercel builds Next.js with `output: "standalone"` natively; keep it on
-  // so `npm run start` also works in any container.
-  output: "standalone",
-
-  // Skip TS type errors during build. We already catch real issues at runtime
-  // via env-var guards in src/lib/supabase/*.ts.
+  // NOTE: do NOT use `output: "standalone"` on Vercel — that mode is for
+  // self-hosted Docker/Node deployments and breaks Vercel's serverless build.
   typescript: {
     ignoreBuildErrors: true,
   },
-
   reactStrictMode: false,
-};
+}
 
-export default nextConfig;
+export default nextConfig

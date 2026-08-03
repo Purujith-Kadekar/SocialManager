@@ -1,71 +1,45 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { useToast } from '@/hooks/use-toast'
 
-export function DeleteRecipeButton({
-  recipeId,
-  recipeName,
-}: {
-  recipeId: string
-  recipeName: string
-}) {
+export function DeleteRecipeButton({ id, name }: { id: string; name: string }) {
   const router = useRouter()
-  const { toast } = useToast()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleDelete = async () => {
+  async function handleDelete() {
+    if (!window.confirm(`Delete recipe "${name}"? This also removes the .tar.gz from storage.`)) {
+      return
+    }
+    setBusy(true)
+    setError(null)
     try {
-      const res = await fetch(`/api/admin/recipes?id=${recipeId}`, { method: 'DELETE' })
-      const data = await res.json()
+      const res = await fetch(`/api/admin/recipes?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast({ title: 'Delete failed', description: data.error, variant: 'destructive' })
+        setError(data?.error ?? `HTTP ${res.status}`)
+        setBusy(false)
         return
       }
-      toast({ title: 'Recipe deleted', description: `${recipeName} has been removed.` })
       router.refresh()
-    } catch {
-      toast({ title: 'Error', description: 'Failed to delete recipe', variant: 'destructive' })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error')
+      setBusy(false)
     }
   }
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete recipe?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete <strong>{recipeName}</strong> ({recipeId}) and its
-            .tar.gz package from Supabase Storage. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <span className="inline-flex flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={busy}
+        className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+      >
+        {busy ? 'Deleting…' : 'Delete'}
+      </button>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </span>
   )
 }

@@ -1,123 +1,102 @@
 'use client'
 
-import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { Mail, Lock, ArrowRight, Loader2, ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useToast } from '@/hooks/use-toast'
-import { Logo } from '@/components/logo'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginContent />
-    </Suspense>
-  )
-}
-
-function LoginContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const { toast } = useToast()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-
+    setError(null)
     setLoading(true)
+
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      const data = await res.json()
+
+      const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        toast({ title: 'Login failed', description: data.error, variant: 'destructive' })
+        setError(data?.error ?? `Login failed (HTTP ${res.status})`)
+        setLoading(false)
         return
       }
-      toast({ title: 'Signed in', description: 'Redirecting to admin…' })
-      // HARD navigate so the freshly-set session cookie is sent on the next request.
-      // Soft router.push can race with the cookie write.
+
+      // Hard navigation so middleware re-evaluates the freshly set cookie.
       window.location.href = '/admin'
-    } catch {
-      toast({ title: 'Error', description: 'Something went wrong', variant: 'destructive' })
-    } finally {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error')
       setLoading(false)
     }
   }
 
-  const error = searchParams.get('error')
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <Logo size={56} />
-          <h1 className="text-2xl font-bold mt-4">Admin sign in</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Restricted access — authorized administrators only
-          </p>
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
+      <div className="text-center">
+        <h1 className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-3xl font-bold text-transparent">
+          Admin sign in
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Restricted area. Authorized admins only.
+        </p>
+      </div>
+
+      <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>
-              Use the credentials defined by <code className="text-xs bg-muted px-1 py-0.5 rounded">ADMIN_EMAIL</code> / <code className="text-xs bg-muted px-1 py-0.5 rounded">ADMIN_PASSWORD</code> env vars.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="email" name="email" type="email" required placeholder="admin@example.com" className="pl-9" autoComplete="email" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="password" name="password" type="password" required placeholder="••••••••" className="pl-9" autoComplete="current-password" />
-                </div>
-              </div>
-              <Button type="submit" disabled={loading} className="w-full bg-indigo-gradient text-white border-0 hover:opacity-90">
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    Sign in
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
 
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          <Link href="/" className="text-primary hover:underline inline-flex items-center gap-1">
-            <ArrowLeft className="h-3 w-3" />
-            Back to home
-          </Link>
-        </p>
-      </div>
-    </div>
+      <p className="mt-6 text-center text-xs text-slate-400">
+        SocialManager API · admin only
+      </p>
+    </main>
   )
 }

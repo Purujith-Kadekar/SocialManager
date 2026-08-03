@@ -1,19 +1,22 @@
-/**
- * POST /api/auth/logout
- * Signs out the current user.
- */
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { clearAdminSessionCookie } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * POST /api/auth/logout
+ *
+ * Clears the admin session cookie. No Supabase signOut call is made
+ * because the admin identity is env-based, not a Supabase Auth user.
+ */
 export async function POST() {
   try {
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-    return NextResponse.json({ success: true })
+    await clearAdminSessionCookie()
+    return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('[/api/auth/logout] fatal:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Server error' },
+      { status: 500 }
+    )
   }
 }

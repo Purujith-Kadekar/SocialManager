@@ -1,59 +1,25 @@
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Shield, Upload, LogOut, ArrowLeft } from 'lucide-react'
-import { getProfile, isAdminEmail } from '@/lib/auth'
-import { Button } from '@/components/ui/button'
-import { UploadForm } from '@/components/admin/upload-form'
-import { Logo } from '@/components/logo'
+import { requireAdmin } from '@/lib/auth'
+import { LogoutButton } from '@/components/admin/logout-button'
+import { UploadRecipeForm } from '@/components/admin/upload-recipe-form'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminUploadPage() {
-  const profile = await getProfile()
-  if (!profile) redirect('/login')
-
-  const isAdmin = profile.is_admin || isAdminEmail(profile.email)
-  if (!isAdmin) redirect('/?error=admin_required')
+  await requireAdmin()
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="border-b border-border/40">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={32} withText asLink={false} />
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded ml-2">Admin</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin/recipes">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Recipes
-              </Link>
-            </Button>
-            <form action="/api/auth/logout" method="POST">
-              <Button type="submit" variant="ghost" size="sm">
-                <LogOut className="h-4 w-4 mr-1" />
-                Sign out
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-10 flex-1">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-2 mb-2">
-            <Upload className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Upload Recipe</h1>
-          </div>
-          <p className="text-muted-foreground mb-8">
-            Upload a custom recipe package (.tar.gz) with metadata.
-            The recipe will appear in the catalog immediately.
+    <main className="mx-auto max-w-2xl px-6 py-16">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Upload custom recipe</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Upload a .tar.gz recipe package. Max size 50 MB.
           </p>
-
-          <UploadForm />
         </div>
-      </main>
-    </div>
+        <LogoutButton />
+      </div>
+
+      <UploadRecipeForm />
+    </main>
   )
 }

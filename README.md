@@ -2,23 +2,27 @@
 
 A self-hosted recipe API for the SocialManager desktop app (Ferdium fork). Built with Next.js 16, Supabase, and Tailwind CSS 4.
 
+**Repository:** https://github.com/Purujith-Kadekar/SocialManager
+
 ## What this provides
 
-- **Recipe catalog API** — 310+ Ferdium-compatible recipes (WhatsApp, Telegram, Discord, Slack, Gmail, etc.)
-- **Admin dashboard** — Upload custom recipes, track storage usage (5GB limit)
-- **Landing page** — Polished indigo-themed marketing site
+- **Public recipe catalog API** — 410+ Ferdium-compatible recipes (WhatsApp, Telegram, Discord, Slack, Gmail, etc.), no auth required
+- **Admin-only recipe management** — upload custom recipes, view the catalog, delete recipes
+- **Landing page** — minimal indigo-themed marketing page
 
-That's it. No user accounts, no OAuth, no magic links, no signup flow. The recipe API is fully public (the desktop app fetches it without auth), and the only protected surface is `/admin` for managing recipes.
+## What this does NOT provide
+
+There is **no user-account layer** — no OAuth, no magic links, no signup, no /dashboard, no per-user sync. The desktop app talks directly to the public recipe API. Admin access is gated by an env-based login at `/login` (you reach `/admin` by typing the URL manually; there is no link from the landing page).
 
 ## Tech stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS 4, shadcn/ui |
+| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS 4 |
 | Backend | Next.js API Routes (serverless) |
-| Database | Supabase Postgres |
+| Database | Supabase Postgres (recipes table only) |
 | Storage | Supabase Storage (5GB free tier) |
-| Auth | Supabase Auth (admin login only — auto-provisioned via env vars) |
+| Admin auth | Env-compare + HMAC-signed cookie (no Supabase Auth) |
 | Deployment | Vercel |
 
 ## Quick start
@@ -39,30 +43,28 @@ That's it. No user accounts, no OAuth, no magic links, no signup flow. The recip
 3. Copy the entire file contents, paste into the SQL editor
 4. Click **Run**
 
-This creates:
-- `profiles` table (extends `auth.users`)
-- `recipes` table
-- `storage_usage` view
-- Row Level Security policies
-- `recipe-packages` storage bucket
-- `promote_admin()` function
+This creates the `recipes` table, RLS policies, and the `recipe-packages` storage bucket. (You can ignore any `profiles` / `user_services` tables that the migration may also create — they are no longer used.)
 
 ### 3. Configure environment variables
 
-1. Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
+```bash
+cp .env.example .env.local
+```
 
-2. Fill in your values:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   ADMIN_EMAIL=your-admin-email@example.com
-   ADMIN_PASSWORD=your-strong-password
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
-   ```
+Fill in `.env.local`:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_STORAGE_BUCKET=recipe-packages
+
+# Admin login — env-based, NOT Supabase Auth
+ADMIN_EMAIL=you@example.com
+ADMIN_PASSWORD=change-this-to-a-strong-password
+
+# Random 32+ chars — used to HMAC-sign the admin session cookie
+AUTH_SECRET=run "openssl rand -base64 32" to generate
+```
 
 ### 4. Install and run
 
@@ -73,21 +75,21 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-### 5. Log in as admin
+### 5. Sign in as admin
 
-1. Go to `/login` (not linked anywhere — type it manually)
-2. Enter the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you set in `.env.local`
-3. On first login, the admin user is auto-created in Supabase Auth with `email_confirm: true` — no email confirmation needed. If you later change the env vars, the password is synced on next login.
+1. Go to `http://localhost:3000/login`
+2. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from your `.env.local`
+3. You'll be redirected to `/admin` where you can upload, browse, and delete recipes
 
-You'll be redirected to `/admin` where you can upload and manage recipes.
+There is no link to `/admin` from the public landing page — type the URL manually.
 
-### 6. Sync all 310 Ferdium recipes
+### 6. Sync all 410+ Ferdium recipes
 
 ```bash
 npm run sync-recipes
 ```
 
-This fetches all recipes from `api.ferdium.org`, downloads their `.tar.gz` packages, uploads them to your Supabase Storage, and inserts metadata into Postgres. Takes ~5-10 minutes.
+This downloads the entire `ferdium/ferdium-recipes` GitHub repo as a single tarball, repackages each recipe folder as `{id}.tar.gz`, uploads them to your Supabase Storage, and inserts metadata into Postgres. Takes ~2-5 minutes.
 
 ### 7. Point your SocialManager desktop app to this API
 
@@ -96,30 +98,27 @@ In the SocialManager desktop app:
 2. Set the server URL to your deployed URL (e.g., `https://your-app.vercel.app`)
 3. Restart the app
 
-The "Add Service" screen will now show all 310 recipes from YOUR API.
-
 ## Deployment to Vercel
 
-1. Push this project to GitHub: [https://github.com/Purujith-Kadekar/SocialManager](https://github.com/Purujith-Kadekar/SocialManager)
-2. Go to [vercel.com](https://vercel.com) → **Add New → Project** → import the `SocialManager` repo
-3. **Before clicking Deploy**, open **Settings → Environment Variables** and add every variable from `.env.example` (see list below). The build will fail without them.
-4. Set `NEXT_PUBLIC_APP_URL` to your Vercel URL (e.g., `https://your-app.vercel.app`)
-5. Click **Deploy**
+⚠️ **IMPORTANT**: Set environment variables BEFORE clicking Deploy.
 
-### Required env vars (set these in Vercel BEFORE deploying)
+1. Push this project to GitHub: https://github.com/Purujith-Kadekar/SocialManager
+2. Go to [vercel.com/new](https://vercel.com/new) and import the repo
+3. Expand "Environment Variables" and add ALL of these:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SUPABASE_STORAGE_BUCKET` = `recipe-packages`
+   - `ADMIN_EMAIL` (the email you'll use to log in)
+   - `ADMIN_PASSWORD` (the password you'll use to log in)
+   - `AUTH_SECRET` (run `openssl rand -base64 32` to generate)
+4. Click **Deploy**
 
-| Variable | Required | Notes |
-|----------|----------|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | YES | Your Supabase project URL (e.g. `https://abcdefgh.supabase.co`) — no `/rest/v1/` suffix |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | YES | Supabase anon public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | YES | Server-only — never expose to the browser |
-| `ADMIN_EMAIL` | YES | Admin email — used with ADMIN_PASSWORD for auto-provisioned login |
-| `ADMIN_PASSWORD` | YES | Admin password — auto-provisions the user on first login |
-| `SUPABASE_ADMIN_EMAILS` | optional | Comma-separated additional admin emails (if you want more than one admin) |
-| `NEXT_PUBLIC_APP_URL` | YES | Your Vercel deployment URL |
-| `SUPABASE_STORAGE_BUCKET` | optional | Defaults to `recipe-packages` |
+After deployment:
+- Visit `https://your-app.vercel.app/login` and sign in with your admin credentials.
+- Visit `https://your-app.vercel.app/admin` to manage recipes.
 
-After deployment, re-run `npm run sync-recipes` (with production env vars) to populate recipes.
+No Supabase Auth configuration is required — the admin login is purely env-based.
 
 ## API endpoints
 
@@ -132,48 +131,32 @@ After deployment, re-run `npm run sync-recipes` (with production env vars) to po
 | GET | `/api/v1/recipes/search?needle=X` | Search recipes by name |
 | GET | `/api/v1/recipes/download/{id}` | Download recipe .tar.gz (redirects to signed URL) |
 
-### Admin only
+### Admin only (requires signed `sm_admin` cookie)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/admin/recipes` | Upload custom recipe |
+| POST | `/api/auth/login` | Sign in (env-compare, sets cookie) |
+| POST | `/api/auth/logout` | Sign out (clears cookie) |
+| GET | `/api/admin/recipes` | List all recipes with storage stats |
+| POST | `/api/admin/recipes` | Upload custom recipe (multipart form) |
 | DELETE | `/api/admin/recipes?id=X` | Delete a recipe |
 | GET | `/api/admin/stats` | Storage usage stats |
-| POST | `/api/auth/login` | Admin login (auto-provisions user on first call) |
-| POST | `/api/auth/logout` | Sign out |
-| GET | `/api/auth/callback` | Stub — redirects to `/admin` |
 
-## Admin access
+## How admin auth works
 
-Admin is controlled by two env vars:
+There is no Supabase Auth integration. The flow is:
 
-- `ADMIN_EMAIL` + `ADMIN_PASSWORD` — used by `/api/auth/login` to auto-provision the admin user on first login. Set both, then go to `/login`.
-- `SUPABASE_ADMIN_EMAILS` — comma-separated list of additional admin emails (optional).
+1. `POST /api/auth/login` receives `{ email, password }`
+2. Server compares them against `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars using `timingSafeEqual` (constant-time compare to avoid timing attacks)
+3. If they match, the server signs an HMAC token with `AUTH_SECRET` and sets it as an httpOnly cookie `sm_admin` (7-day expiry)
+4. Middleware on `/admin/*` and `/api/admin/*` verifies the HMAC signature on every request — no DB lookup, fully stateless
+5. `POST /api/auth/logout` just clears the cookie
 
-## Pages
-
-| Route | Description |
-|-------|-------------|
-| `/` | Landing page (public) |
-| `/login` | Admin sign-in (not linked — type manually) |
-| `/admin` | Admin overview (storage tracker) |
-| `/admin/recipes` | Recipe management |
-| `/admin/upload` | Upload custom recipe |
-
-## Storage tracker
-
-The admin dashboard shows real-time storage usage:
-- Total bytes used
-- % of 5GB limit
-- Available space
-- File count
-- Warning at 70% usage
-- Critical alert at 90% usage
-
-If you exceed 5GB, options:
-1. Delete unused recipes from `/admin/recipes`
-2. Upgrade to Supabase Pro ($25/month for 100GB)
-3. Move old recipes to a cheaper storage backend
+This means:
+- No Supabase Auth project configuration needed
+- No `getUserByEmail` errors
+- No redirect/callback URLs to whitelist in Supabase
+- Change your admin password = just update the env var on Vercel
 
 ## License
 

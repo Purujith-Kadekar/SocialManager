@@ -1,143 +1,95 @@
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Shield, Upload, Package, LogOut, Search, Trash2 } from 'lucide-react'
-import { getProfile, isAdminEmail } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { LogoutButton } from '@/components/admin/logout-button'
 import { DeleteRecipeButton } from '@/components/admin/delete-recipe-button'
-import { Logo } from '@/components/logo'
 
 export const dynamic = 'force-dynamic'
 
-export default async function AdminRecipesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>
-}) {
-  const profile = await getProfile()
-  if (!profile) redirect('/login')
+type RecipeRow = {
+  id: string
+  name: string
+  file_size_bytes: number | null
+  is_custom: boolean | null
+  is_official: boolean | null
+  created_at: string | null
+}
 
-  const isAdmin = profile.is_admin || isAdminEmail(profile.email)
-  if (!isAdmin) redirect('/?error=admin_required')
-
-  const { q } = await searchParams
-  const query = q?.trim() ?? ''
-
+async function loadRecipes(): Promise<RecipeRow[]> {
   const supabase = createAdminClient()
-  let recipesQuery = supabase
+  const { data, error } = await supabase
     .from('recipes')
-    .select('id, name, description, category, is_custom, is_official, is_featured, file_size_bytes, created_at')
-    .order('name', { ascending: true })
+    .select('id, name, file_size_bytes, is_custom, is_official, created_at')
+    .order('created_at', { ascending: false })
 
-  if (query) {
-    recipesQuery = recipesQuery.ilike('name', `%${query}%`)
+  if (error) {
+    console.error('Failed to load recipes:', error.message)
+    return []
   }
+  return (data ?? []) as RecipeRow[]
+}
 
-  const { data: recipes } = await recipesQuery
+function formatBytes(bytes: number | null): string {
+  if (!bytes) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
+
+export default async function AdminRecipesPage() {
+  await requireAdmin()
+  const recipes = await loadRecipes()
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="border-b border-border/40">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={32} withText asLink={false} />
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded ml-2">Admin</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin">← Back to admin</Link>
-            </Button>
-            <form action="/api/auth/logout" method="POST">
-              <Button type="submit" variant="ghost" size="sm">
-                <LogOut className="h-4 w-4 mr-1" />
-                Sign out
-              </Button>
-            </form>
-          </div>
+    <main className="mx-auto max-w-5xl px-6 py-16">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Recipes</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            All recipes in your catalog. Custom recipes can be deleted.
+          </p>
         </div>
-      </header>
+        <LogoutButton />
+      </div>
 
-      <main className="container mx-auto px-4 py-10 flex-1">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Package className="h-6 w-6 text-primary" />
-                Recipes ({recipes?.length ?? 0})
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage the recipe catalog
-              </p>
-            </div>
-            <Button asChild className="bg-indigo-gradient text-white border-0 hover:opacity-90">
-              <Link href="/admin/upload">
-                <Upload className="h-4 w-4 mr-1" />
-                Upload new
-              </Link>
-            </Button>
-          </div>
-
-          {/* Search */}
-          <form className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="search"
-                name="q"
-                defaultValue={query}
-                placeholder="Search recipes..."
-                className="w-full pl-9 pr-4 py-2 rounded-md border border-input bg-background text-sm"
-              />
-            </div>
-          </form>
-
-          {/* Recipe list */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border/40 max-h-[70vh] overflow-y-auto">
-                {recipes && recipes.length > 0 ? (
-                  recipes.map((r) => (
-                    <div key={r.id} className="flex items-center gap-4 p-4 hover:bg-muted/30">
-                      <div className="h-10 w-10 rounded-lg bg-indigo-gradient flex items-center justify-center text-white font-bold">
-                        {r.name[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{r.name}</span>
-                          {r.is_featured && (
-                            <Badge variant="secondary" className="text-xs">Featured</Badge>
-                          )}
-                          {r.is_custom ? (
-                            <Badge variant="outline" className="text-xs">Custom</Badge>
-                          ) : r.is_official ? (
-                            <Badge variant="outline" className="text-xs">Official</Badge>
-                          ) : null}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {r.id} · {r.category} · {(r.file_size_bytes / 1024).toFixed(0)} KB
-                        </div>
-                      </div>
-                      <DeleteRecipeButton recipeId={r.id} recipeName={r.name} />
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-12 text-center text-muted-foreground">
-                    <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p className="font-medium">No recipes found</p>
-                    <p className="text-sm mt-1">
-                      {query
-                        ? `No recipes match "${query}"`
-                        : 'Upload a custom recipe or run the sync script to import Ferdium recipes.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+      <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3 text-right">Size</th>
+              <th className="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {recipes.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                  No recipes loaded. Run <code className="rounded bg-slate-100 px-1.5 py-0.5">npm run sync-recipes</code> or upload one from <a className="text-indigo-600 hover:underline" href="/admin/upload">/admin/upload</a>.
+                </td>
+              </tr>
+            )}
+            {recipes.map((r) => (
+              <tr key={r.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.id}</td>
+                <td className="px-4 py-3 text-slate-900">{r.name}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {r.is_custom ? 'custom' : r.is_official ? 'official' : 'standard'}
+                </td>
+                <td className="px-4 py-3 text-right text-slate-600">{formatBytes(r.file_size_bytes)}</td>
+                <td className="px-4 py-3 text-right">
+                  {r.is_custom ? (
+                    <DeleteRecipeButton id={r.id} name={r.name} />
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </main>
   )
 }
