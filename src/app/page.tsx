@@ -26,7 +26,7 @@ export default function HomePage() {
             <a href="#recipes" className="transition hover:text-white">Recipes</a>
             <a href="/api/v1/recipes" className="transition hover:text-white">API</a>
             <a
-              href="https://github.com/ferdium/ferdium-app"
+              href="https://github.com/Purujith-Kadekar/SocialManager"
               target="_blank"
               rel="noreferrer"
               className="transition hover:text-white"

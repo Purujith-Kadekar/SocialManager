@@ -1,11 +1,19 @@
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { NextRequest, NextResponse } from 'next/server'
-import { timingSafeEqual } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 
 /**
  * Storage cap for the recipe bucket.
  * Mirrors the 5 GB free-tier ceiling we document on the landing page.
  */
 export const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024 * 1024 // 5 GB
+
+/** Cookie name used for the admin session. */
+export const ADMIN_COOKIE = 'sm_admin'
+
+/** Token lifetime — 7 days. */
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
  * Constant-time string compare to avoid timing-attack leaks
@@ -26,6 +34,7 @@ function safeEqual(a: string, b: string): boolean {
  * purely in Vercel environment variables:
  *   - ADMIN_EMAIL
  *   - ADMIN_PASSWORD
+ *   - AUTH_SECRET  (used to sign the session cookie)
  */
 export function verifyAdminCredentials(email: string, password: string): boolean {
   const expectedEmail = process.env.ADMIN_EMAIL ?? ''
@@ -42,44 +51,91 @@ export function verifyAdminCredentials(email: string, password: string): boolean
 }
 
 /**
- * Parse the HTTP Basic `Authorization` header from a request.
- * Returns `{ email, password }` when a valid Basic header is present,
- * or `null` otherwise.
+ * Build an HMAC-signed session token. Token shape:
+ *   <expiresAtMs>.<base64url(hmac-sha256(secret, expiresAtMs))>
  *
- * Browsers send this automatically after the user dismisses the native
- * 401 challenge dialog with credentials filled in. No login page needed.
+ * Stateless — verifying it does not require a DB lookup, only AUTH_SECRET.
  */
-export function parseBasicAuth(request: NextRequest): { email: string; password: string } | null {
-  const header = request.headers.get('authorization')
-  if (!header) return null
-
-  const parts = header.split(' ')
-  if (parts.length !== 2 || parts[0].toLowerCase() !== 'basic') return null
-
-  let decoded: string
-  try {
-    decoded = Buffer.from(parts[1], 'base64').toString('utf8')
-  } catch {
-    return null
+export function createSessionToken(): string {
+  const secret = process.env.AUTH_SECRET
+  if (!secret) {
+    throw new Error('AUTH_SECRET env var is not set — cannot sign admin session.')
   }
+  const expiresAt = Date.now() + SESSION_TTL_MS
+  const payload = String(expiresAt)
+  const sig = createHmac('sha256', secret).update(payload).digest('base64url')
+  return `${payload}.${sig}`
+}
 
-  const colon = decoded.indexOf(':')
-  if (colon === -1) return null
+/**
+ * Verify a session token. Returns true when the signature is valid
+ * AND the token has not expired.
+ */
+export function verifySessionToken(token: string | undefined | null): boolean {
+  if (!token) return false
+  const secret = process.env.AUTH_SECRET
+  if (!secret) return false
 
-  return {
-    email: decoded.slice(0, colon),
-    password: decoded.slice(colon + 1),
+  const dot = token.indexOf('.')
+  if (dot === -1) return false
+  const payload = token.slice(0, dot)
+  const sig = token.slice(dot + 1)
+
+  const expectedSig = createHmac('sha256', secret).update(payload).digest('base64url')
+  if (!safeEqual(sig, expectedSig)) return false
+
+  const expiresAt = Number(payload)
+  if (!Number.isFinite(expiresAt)) return false
+  return expiresAt > Date.now()
+}
+
+/** Cookie options applied to the admin session cookie. */
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: Math.floor(SESSION_TTL_MS / 1000),
+}
+
+/**
+ * Server-Component / Server-Action helper — set the admin session
+ * cookie on the response (or via cookies() in a Server Component).
+ */
+export async function setAdminSessionCookie(token: string) {
+  const store = await cookies()
+  store.set(ADMIN_COOKIE, token, COOKIE_OPTIONS)
+}
+
+/**
+ * Server-Action helper — clear the admin session cookie.
+ */
+export async function clearAdminSessionCookie() {
+  const store = await cookies()
+  store.delete(ADMIN_COOKIE)
+}
+
+/**
+ * Server-Component guard for /admin pages.
+ * Reads the cookie, verifies the token, and redirects to /login
+ * if the session is missing or invalid.
+ */
+export async function requireAdmin() {
+  const store = await cookies()
+  const token = store.get(ADMIN_COOKIE)?.value
+  if (!verifySessionToken(token)) {
+    redirect('/login')
   }
 }
 
 /**
- * Returns true when the incoming request carries valid HTTP Basic
- * admin credentials. Used by middleware + /api/admin/* handlers.
+ * API-route guard. Returns true when the incoming request carries
+ * a valid admin session cookie. Use this in /api/admin/* handlers
+ * to gate writes.
  */
 export function isAdminRequest(request: NextRequest): boolean {
-  const creds = parseBasicAuth(request)
-  if (!creds) return false
-  return verifyAdminCredentials(creds.email, creds.password)
+  const token = request.cookies.get(ADMIN_COOKIE)?.value
+  return verifySessionToken(token)
 }
 
 /**

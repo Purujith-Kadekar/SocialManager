@@ -1,6 +1,10 @@
+import { requireAdmin } from '@/lib/auth'
+
 export const dynamic = 'force-dynamic'
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  await requireAdmin()
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-indigo-radial">
       <div className="pointer-events-none absolute inset-0 bg-grid opacity-60" />
@@ -19,6 +23,14 @@ export default function AdminPage() {
             <div className="text-2xl">📚</div>
             <h3 className="mt-3 font-semibold text-white">Recipes</h3>
             <p className="mt-1 text-sm text-slate-400">View and delete recipes</p>
+          </a>
+          <a
+            href="/admin/upload"
+            className="rounded-xl border border-indigo-900/40 bg-white/5 p-6 backdrop-blur transition hover:border-indigo-500/60 hover:bg-white/10"
+          >
+            <div className="text-2xl">📤</div>
+            <h3 className="mt-3 font-semibold text-white">Upload</h3>
+            <p className="mt-1 text-sm text-slate-400">Add a custom recipe</p>
           </a>
           <a
             href="/api/admin/stats"

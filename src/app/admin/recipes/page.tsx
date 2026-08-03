@@ -1,6 +1,10 @@
+import { requireAdmin } from '@/lib/auth'
+
 export const dynamic = 'force-dynamic'
 
-export default function AdminRecipesPage() {
+export default async function AdminRecipesPage() {
+  await requireAdmin()
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-indigo-radial">
       <div className="pointer-events-none absolute inset-0 bg-grid opacity-60" />
