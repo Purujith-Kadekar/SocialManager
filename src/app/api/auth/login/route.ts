@@ -17,6 +17,34 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Returns a JSON 500 with the REAL error message so you can diagnose
+ * missing env vars / Supabase errors from the browser network tab
+ * instead of seeing a generic "Internal server error".
+ *
+ * (Safe to expose: env-var *names* are not secrets, and Supabase error
+ * messages are already user-facing. Just don't ever log the service-role
+ * key value itself.)
+ */
+function diagnosticError(stage: string, err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err)
+  console.error(`[/api/auth/login] ${stage}:`, err)
+  return NextResponse.json(
+    {
+      error: `[${stage}] ${msg}`,
+      // surface which env vars look missing — names only, not values
+      env_hint: {
+        has_supabase_url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        has_anon_key: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        has_service_role: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        has_admin_email: !!process.env.ADMIN_EMAIL,
+        has_admin_password: !!process.env.ADMIN_PASSWORD,
+      },
+    },
+    { status: 500 }
+  )
+}
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
@@ -38,7 +66,14 @@ export async function POST(request: Request) {
       password === adminPassword
 
     if (isEnvAdmin) {
-      const adminSupabase = createAdminClient()
+      // createAdminClient throws if SUPABASE_SERVICE_ROLE_KEY is missing.
+      // Surface a helpful error instead of letting it bubble up as generic 500.
+      let adminSupabase
+      try {
+        adminSupabase = createAdminClient()
+      } catch (err) {
+        return diagnosticError('admin_client_init', err)
+      }
 
       // Look up existing user by email
       const { data: existing, error: lookupError } =
@@ -55,11 +90,7 @@ export async function POST(request: Request) {
           })
 
         if (createError || !created?.user) {
-          console.error('[/api/auth/login] admin create failed:', createError)
-          return NextResponse.json(
-            { error: 'Failed to provision admin user: ' + (createError?.message ?? 'unknown') },
-            { status: 500 }
-          )
+          return diagnosticError('admin_create', createError ?? new Error('No user returned'))
         }
         console.log('[/api/auth/login] admin user created:', created.user.id)
       } else {
@@ -69,14 +100,20 @@ export async function POST(request: Request) {
           { password, email_confirm: true }
         )
         if (updateError) {
-          console.error('[/api/auth/login] admin password sync failed:', updateError)
           // Non-fatal — fall through to signInWithPassword
+          console.error('[/api/auth/login] admin password sync failed:', updateError)
         }
       }
     }
 
     // --- Sign in (works for both env-admin and regular users) ---
-    const supabase = await createClient()
+    let supabase
+    try {
+      supabase = await createClient()
+    } catch (err) {
+      return diagnosticError('server_client_init', err)
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -91,7 +128,6 @@ export async function POST(request: Request) {
       session: data.session,
     })
   } catch (err) {
-    console.error('[/api/auth/login] fatal:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return diagnosticError('fatal', err)
   }
 }

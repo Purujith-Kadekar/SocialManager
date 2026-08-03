@@ -1,21 +1,13 @@
 import Link from 'next/link'
-import { Suspense } from 'react'
-import { ArrowRight, Download, Server, Shield, Zap, Github } from 'lucide-react'
+import { ArrowRight, Server, Shield, Github, Package, Database, Code } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { AuthCodeHandler } from '@/components/auth-code-handler'
 import { Logo } from '@/components/logo'
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Email verification safety net — catches ?code= on the homepage
-          in case Supabase falls back to Site URL instead of /api/auth/callback */}
-      <Suspense fallback={null}>
-        <AuthCodeHandler />
-      </Suspense>
-
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -37,13 +29,17 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild>
-              <Link href="/login">Sign in</Link>
+              <Link href="/api/v1/recipes">Browse API</Link>
             </Button>
             <Button asChild className="bg-indigo-gradient text-white border-0 hover:opacity-90">
-              <Link href="/signup">
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              <a
+                href="https://github.com/Purujith-Kadekar/SocialManager"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Github className="mr-2 h-4 w-4" />
+                View Source
+              </a>
             </Button>
           </div>
         </div>
@@ -69,23 +65,27 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button size="lg" asChild className="bg-indigo-gradient text-white border-0 hover:opacity-90">
-                <Link href="/signup">
-                  <Download className="mr-2 h-5 w-5" />
-                  Get Started Free
+                <Link href="/api/v1/recipes">
+                  <Server className="mr-2 h-5 w-5" />
+                  Browse the recipe catalog
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="/api/v1/recipes">
-                  <Server className="mr-2 h-5 w-5" />
-                  Browse API
-                </Link>
+                <a
+                  href="https://github.com/Purujith-Kadekar/SocialManager"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Github className="mr-2 h-5 w-5" />
+                  View on GitHub
+                </a>
               </Button>
             </div>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground">
-              <span>✓ 310+ recipes</span>
-              <span>✓ Cross-device sync</span>
-              <span>✓ Custom recipe uploads</span>
-              <span>✓ Open source</span>
+              <span>310+ recipes</span>
+              <span>Drop-in Ferdium replacement</span>
+              <span>Self-hosted</span>
+              <span>Open source</span>
             </div>
           </div>
         </div>
@@ -104,8 +104,8 @@ export default function LandingPage() {
               <div className="text-sm text-muted-foreground mt-1">Storage included</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-indigo-gradient">3</div>
-              <div className="text-sm text-muted-foreground mt-1">Auth methods</div>
+              <div className="text-3xl font-bold text-indigo-gradient">100%</div>
+              <div className="text-sm text-muted-foreground mt-1">Open source</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-indigo-gradient">$0</div>
@@ -122,8 +122,8 @@ export default function LandingPage() {
             Built for the SocialManager desktop app
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            A complete backend infrastructure — recipe catalog, user accounts, cross-device sync,
-            and admin management — all hosted on Vercel + Supabase.
+            A complete backend for serving the recipe catalog — hosted on Vercel + Supabase,
+            managed through a private admin dashboard.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
@@ -144,22 +144,22 @@ export default function LandingPage() {
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
                 <Shield className="h-5 w-5 text-primary" />
               </div>
-              <CardTitle>Secure auth</CardTitle>
+              <CardTitle>Self-hosted</CardTitle>
               <CardDescription>
-                Email + password, magic link, and Google OAuth — all powered by Supabase Auth
-                with Row Level Security.
+                Run it on your own Vercel + Supabase account. Full control over the recipe
+                catalog, storage, and admin access. No third-party dependencies.
               </CardDescription>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader>
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
-                <Zap className="h-5 w-5 text-primary" />
+                <Code className="h-5 w-5 text-primary" />
               </div>
-              <CardTitle>Cross-device sync</CardTitle>
+              <CardTitle>Open source</CardTitle>
               <CardDescription>
-                Sign in on any device and your services, settings, and workspaces sync instantly.
-                Powered by Supabase Postgres.
+                MIT licensed. Fork it, customize it, host your own recipe catalog.
+                Built with Next.js, Supabase, and the shadcn/ui component library.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -176,8 +176,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-lg text-muted-foreground mb-6">
               The SocialManager desktop app talks to this API to fetch recipes, search the catalog,
-              download packages, and sync your services. All endpoints are public except service sync,
-              which requires authentication.
+              and download packages. All endpoints are public — no auth required for the desktop app.
             </p>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-3">
@@ -273,15 +272,21 @@ export default function LandingPage() {
               Ready to get started?
             </h2>
             <p className="text-lg opacity-90 mb-8 max-w-xl mx-auto">
-              Create an account to sync your services across devices, or browse the recipe
-              catalog right now — no signup required.
+              Browse the recipe catalog right now, or fork the project on GitHub
+              to run your own instance.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button size="lg" variant="secondary" asChild>
-                <Link href="/signup">Create free account</Link>
+                <Link href="/api/v1/recipes">Browse recipes</Link>
               </Button>
               <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
-                <Link href="/api/v1/recipes">Browse recipes</Link>
+                <a
+                  href="https://github.com/Purujith-Kadekar/SocialManager"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on GitHub
+                </a>
               </Button>
             </div>
           </CardContent>
@@ -305,15 +310,12 @@ export default function LandingPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="#features" className="hover:text-foreground">Features</Link></li>
                 <li><Link href="/api/v1/recipes" className="hover:text-foreground">Recipe catalog</Link></li>
-                <li><Link href="/signup" className="hover:text-foreground">Sign up</Link></li>
-                <li><Link href="/login" className="hover:text-foreground">Sign in</Link></li>
+                <li><Link href="#api" className="hover:text-foreground">API docs</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-3 text-sm">Resources</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/admin" className="hover:text-foreground">Admin dashboard</Link></li>
-                <li><Link href="/dashboard" className="hover:text-foreground">User dashboard</Link></li>
                 <li>
                   <a
                     href="https://github.com/Purujith-Kadekar/SocialManager"
@@ -331,10 +333,6 @@ export default function LandingPage() {
             <span>
               © {new Date().getFullYear()} SocialManager · Developed by Purujith Kadekar
             </span>
-            <div className="flex gap-4">
-              <Link href="/terms" className="hover:text-foreground">Terms</Link>
-              <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-            </div>
           </div>
         </div>
       </footer>

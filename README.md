@@ -5,10 +5,10 @@ A self-hosted recipe API for the SocialManager desktop app (Ferdium fork). Built
 ## What this provides
 
 - **Recipe catalog API** — 310+ Ferdium-compatible recipes (WhatsApp, Telegram, Discord, Slack, Gmail, etc.)
-- **User accounts** — Email/password, magic link, and Google OAuth
-- **Cross-device sync** — Services sync across devices via Supabase Postgres
 - **Admin dashboard** — Upload custom recipes, track storage usage (5GB limit)
 - **Landing page** — Polished indigo-themed marketing site
+
+That's it. No user accounts, no OAuth, no magic links, no signup flow. The recipe API is fully public (the desktop app fetches it without auth), and the only protected surface is `/admin` for managing recipes.
 
 ## Tech stack
 
@@ -18,7 +18,7 @@ A self-hosted recipe API for the SocialManager desktop app (Ferdium fork). Built
 | Backend | Next.js API Routes (serverless) |
 | Database | Supabase Postgres |
 | Storage | Supabase Storage (5GB free tier) |
-| Auth | Supabase Auth (email/password, magic link, Google OAuth) |
+| Auth | Supabase Auth (admin login only — auto-provisioned via env vars) |
 | Deployment | Vercel |
 
 ## Quick start
@@ -42,7 +42,6 @@ A self-hosted recipe API for the SocialManager desktop app (Ferdium fork). Built
 This creates:
 - `profiles` table (extends `auth.users`)
 - `recipes` table
-- `user_services` table
 - `storage_usage` view
 - Row Level Security policies
 - `recipe-packages` storage bucket
@@ -60,7 +59,8 @@ This creates:
    NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   SUPABASE_ADMIN_EMAILS=your-email@example.com
+   ADMIN_EMAIL=your-admin-email@example.com
+   ADMIN_PASSWORD=your-strong-password
    NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
 
@@ -73,25 +73,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-### 5. Create your admin account
+### 5. Log in as admin
 
-**Option A — Auto-provisioned admin (recommended, no signup needed):**
+1. Go to `/login` (not linked anywhere — type it manually)
+2. Enter the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you set in `.env.local`
+3. On first login, the admin user is auto-created in Supabase Auth with `email_confirm: true` — no email confirmation needed. If you later change the env vars, the password is synced on next login.
 
-Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your `.env.local` (or Vercel env vars), then go straight to `/login` and enter those credentials. On first login, the user is automatically created in Supabase Auth with `email_confirm: true` — no email confirmation needed. If you later change the env vars, the password is synced on next login.
-
-```env
-ADMIN_EMAIL=your-admin-email@example.com
-ADMIN_PASSWORD=your-strong-password
-```
-
-**Option B — Manual signup:**
-
-1. Go to `/signup` and create an account with your admin email
-2. Check your email and click the confirmation link
-3. Sign in at `/login`
-4. Your email is automatically admin because it's in `SUPABASE_ADMIN_EMAILS`
-
-> If the email confirmation link lands on `/?code=...` instead of redirecting to `/dashboard`, the app has a safety-net handler on `/` that will exchange the code client-side and redirect you. You can also add `https://your-app.vercel.app/api/auth/callback` to Supabase → Authentication → URL Configuration → Redirect URLs to make the redirect go directly to the callback route.
+You'll be redirected to `/admin` where you can upload and manage recipes.
 
 ### 6. Sync all 310 Ferdium recipes
 
@@ -125,35 +113,13 @@ The "Add Service" screen will now show all 310 recipes from YOUR API.
 | `NEXT_PUBLIC_SUPABASE_URL` | YES | Your Supabase project URL (e.g. `https://abcdefgh.supabase.co`) — no `/rest/v1/` suffix |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | YES | Supabase anon public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | YES | Server-only — never expose to the browser |
-| `SUPABASE_ADMIN_EMAILS` | optional | Comma-separated admin emails (legacy, you can use ADMIN_EMAIL instead) |
-| `ADMIN_EMAIL` | recommended | Single admin email — used with ADMIN_PASSWORD for auto-provisioned login |
-| `ADMIN_PASSWORD` | recommended | Single admin password — auto-provisions the user on first login |
+| `ADMIN_EMAIL` | YES | Admin email — used with ADMIN_PASSWORD for auto-provisioned login |
+| `ADMIN_PASSWORD` | YES | Admin password — auto-provisions the user on first login |
+| `SUPABASE_ADMIN_EMAILS` | optional | Comma-separated additional admin emails (if you want more than one admin) |
 | `NEXT_PUBLIC_APP_URL` | YES | Your Vercel deployment URL |
 | `SUPABASE_STORAGE_BUCKET` | optional | Defaults to `recipe-packages` |
-| `AUTH_SECRET` | optional | Needed only if you use NextAuth features |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | optional | Only for Google OAuth |
 
-After deployment:
-1. Update Supabase Auth settings:
-   - Go to **Authentication → URL Configuration**
-   - Set **Site URL** to `https://your-app.vercel.app`
-   - Add `https://your-app.vercel.app/api/auth/callback` to **Redirect URLs**
-2. Re-run `npm run sync-recipes` (with production env vars) to populate recipes
-
-## Google OAuth setup (optional)
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-2. Create an OAuth 2.0 Client ID (Web application)
-3. Add authorized redirect URI: `https://your-project.supabase.co/auth/v1/callback`
-4. Copy the Client ID and Client Secret
-5. In Supabase: **Authentication → Providers → Google**
-   - Enable Google
-   - Paste Client ID and Client Secret
-6. In `.env.local`:
-   ```env
-   GOOGLE_CLIENT_ID=your-client-id
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   ```
+After deployment, re-run `npm run sync-recipes` (with production env vars) to populate recipes.
 
 ## API endpoints
 
@@ -166,20 +132,6 @@ After deployment:
 | GET | `/api/v1/recipes/search?needle=X` | Search recipes by name |
 | GET | `/api/v1/recipes/download/{id}` | Download recipe .tar.gz (redirects to signed URL) |
 
-### Authenticated
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/me` | Current user profile |
-| GET | `/api/v1/services` | List user's synced services |
-| POST | `/api/v1/services` | Create/update a service |
-| DELETE | `/api/v1/services?id=X` | Delete a service |
-| POST | `/api/auth/signup` | Sign up with email/password |
-| POST | `/api/auth/login` | Sign in with email/password |
-| POST | `/api/auth/magic-link` | Send magic link |
-| POST | `/api/auth/logout` | Sign out |
-| GET | `/api/auth/callback` | OAuth callback |
-
 ### Admin only
 
 | Method | Endpoint | Description |
@@ -187,25 +139,23 @@ After deployment:
 | POST | `/api/admin/recipes` | Upload custom recipe |
 | DELETE | `/api/admin/recipes?id=X` | Delete a recipe |
 | GET | `/api/admin/stats` | Storage usage stats |
+| POST | `/api/auth/login` | Admin login (auto-provisions user on first call) |
+| POST | `/api/auth/logout` | Sign out |
+| GET | `/api/auth/callback` | Stub — redirects to `/admin` |
 
 ## Admin access
 
-Admin is controlled by the `SUPABASE_ADMIN_EMAILS` environment variable:
+Admin is controlled by two env vars:
 
-```env
-SUPABASE_ADMIN_EMAILS=you@example.com,friend@example.com
-```
-
-Any user signing up with one of these emails automatically gets admin access. No database changes needed.
+- `ADMIN_EMAIL` + `ADMIN_PASSWORD` — used by `/api/auth/login` to auto-provision the admin user on first login. Set both, then go to `/login`.
+- `SUPABASE_ADMIN_EMAILS` — comma-separated list of additional admin emails (optional).
 
 ## Pages
 
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page (public) |
-| `/login` | Sign in |
-| `/signup` | Create account |
-| `/dashboard` | User dashboard (synced services) |
+| `/login` | Admin sign-in (not linked — type manually) |
 | `/admin` | Admin overview (storage tracker) |
 | `/admin/recipes` | Recipe management |
 | `/admin/upload` | Upload custom recipe |

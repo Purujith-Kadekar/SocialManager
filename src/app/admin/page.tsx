@@ -43,7 +43,7 @@ export default async function AdminPage() {
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/">Home</Link>
             </Button>
             <form action="/api/auth/logout" method="POST">
               <Button type="submit" variant="ghost" size="sm">
