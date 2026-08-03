@@ -1,29 +1,27 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 viewBox="0 0 30 30" style="enable-background:new 0 0 30 30;" xml:space="preserve">
-<defs>
-  <style type="text/css">
-    .st194{fill:#2D2D2D;stroke:#FFFFFF;stroke-width:0.6317;stroke-miterlimit:10;}
-    .st23{fill:#FFFFFF;}
-
-    .z-breathe {
-      animation: breathe 2.5s ease-in-out infinite;
-    }
-
-    @keyframes breathe {
-      0%, 100% { opacity: 0.7; }
-      50% { opacity: 1; }
-    }
-  </style>
-</defs>
-
-<g>
-  <path class="st194" d="M24.51,28.51H5.49c-2.21,0-4-1.79-4-4V5.49c0-2.21,1.79-4,4-4h19.03c2.21,0,4,1.79,4,4v19.03
-    C28.51,26.72,26.72,28.51,24.51,28.51z"/>
-  <g class="z-breathe">
-    <path class="st23" d="M15.47,7.1l-1.3,1.85c-0.2,0.29-0.54,0.47-0.9,0.47h-7.1V7.09C6.16,7.1,15.47,7.1,15.47,7.1z"/>
-    <polygon class="st23" points="24.3,7.1 13.14,22.91 5.7,22.91 16.86,7.1"/>
-    <path class="st23" d="M14.53,22.91l1.31-1.86c0.2-0.29,0.54-0.47,0.9-0.47h7.09v2.33H14.53z"/>
-  </g>
-</g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="shieldFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7E57C2"/>
+      <stop offset="50%" stop-color="#5838B8"/>
+      <stop offset="100%" stop-color="#4527A0"/>
+    </linearGradient>
+    <linearGradient id="lockFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E0E0E0"/>
+    </linearGradient>
+  </defs>
+  <!-- Amber accent at top peak (matches the small yellow dot in brand icons) -->
+  <circle cx="128" cy="22" r="6" fill="#FFD166"/>
+  <!-- Shield body -->
+  <path d="M128 24 L208 56 L208 132 C208 184 176 216 128 232 C80 216 48 184 48 132 L48 56 Z"
+        fill="url(#shieldFill)" stroke="#311B92" stroke-width="2"/>
+  <!-- Padlock body -->
+  <rect x="96" y="120" width="64" height="52" rx="6" fill="url(#lockFill)" stroke="#1A1A1A" stroke-width="1.5"/>
+  <!-- Padlock shackle -->
+  <path d="M108 120 L108 104 C108 92 116 84 128 84 C140 84 148 92 148 104 L148 120"
+        fill="none" stroke="url(#lockFill)" stroke-width="8" stroke-linecap="round"/>
+  <!-- Keyhole -->
+  <circle cx="128" cy="142" r="5" fill="#1A1A1A"/>
+  <rect x="125" y="146" width="6" height="14" rx="1.5" fill="#1A1A1A"/>
 </svg>

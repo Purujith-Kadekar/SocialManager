@@ -3,13 +3,14 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { MessageCircle, Mail, Lock, User, ArrowRight, Loader2, Sparkles } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
+import { Logo } from '@/components/logo'
 
 export default function SignupPage() {
   return (
@@ -105,11 +106,7 @@ function SignupContent() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="h-10 w-10 rounded-lg bg-indigo-gradient flex items-center justify-center">
-              <MessageCircle className="h-6 w-6 text-white" />
-            </div>
-          </Link>
+          <Logo size={56} />
           <h1 className="text-2xl font-bold mt-4">Create your account</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Sign up to sync your services across devices
@@ -227,6 +224,12 @@ function SignupContent() {
           <Link href="/login" className="text-primary hover:underline">
             Sign in
           </Link>
+        </p>
+        <p className="text-center text-xs text-muted-foreground mt-3">
+          By creating an account, you agree to our{' '}
+          <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>
+          {' '}and{' '}
+          <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
         </p>
       </div>
     </div>

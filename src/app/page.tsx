@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { ArrowRight, Download, Server, Shield, Zap, Github, MessageCircle } from 'lucide-react'
+import { ArrowRight, Download, Server, Shield, Zap, Github } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AuthCodeHandler } from '@/components/auth-code-handler'
+import { Logo } from '@/components/logo'
 
 export default function LandingPage() {
   return (
@@ -19,10 +20,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-indigo-gradient flex items-center justify-center">
-              <MessageCircle className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold text-lg">SocialManager</span>
+            <Logo size={32} withText textClassName="text-lg" />
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
@@ -296,10 +294,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="h-6 w-6 rounded bg-indigo-gradient flex items-center justify-center">
-                  <MessageCircle className="h-4 w-4 text-white" />
-                </div>
-                <span className="font-bold">SocialManager</span>
+                <Logo size={24} withText textClassName="font-bold" />
               </div>
               <p className="text-sm text-muted-foreground">
                 Open-source messaging app aggregator. Self-hosted recipe API.
@@ -332,8 +327,14 @@ export default function LandingPage() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-border/40 pt-6 text-sm text-muted-foreground text-center">
-            © {new Date().getFullYear()} SocialManager. Open source under MIT License.
+          <div className="border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span>
+              © {new Date().getFullYear()} SocialManager · Developed by Purujith Kadekar
+            </span>
+            <div className="flex gap-4">
+              <Link href="/terms" className="hover:text-foreground">Terms</Link>
+              <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            </div>
           </div>
         </div>
       </footer>

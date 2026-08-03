@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { MessageCircle, Shield, Upload, Package, LogOut, Search, Trash2 } from 'lucide-react'
+import { Shield, Upload, Package, LogOut, Search, Trash2 } from 'lucide-react'
 import { getProfile, isAdminEmail } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { DeleteRecipeButton } from '@/components/admin/delete-recipe-button'
+import { Logo } from '@/components/logo'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,10 +42,7 @@ export default async function AdminRecipesPage({
       <header className="border-b border-border/40">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-indigo-gradient flex items-center justify-center">
-              <MessageCircle className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold">SocialManager</span>
+            <Logo size={32} withText asLink={false} />
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded ml-2">Admin</span>
           </Link>
           <div className="flex items-center gap-2">

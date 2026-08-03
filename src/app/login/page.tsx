@@ -3,13 +3,14 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { MessageCircle, Mail, Lock, ArrowRight, Loader2, Sparkles } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
+import { Logo } from '@/components/logo'
 
 export default function LoginPage() {
   return (
@@ -97,11 +98,7 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="h-10 w-10 rounded-lg bg-indigo-gradient flex items-center justify-center">
-              <MessageCircle className="h-6 w-6 text-white" />
-            </div>
-          </Link>
+          <Logo size={56} />
           <h1 className="text-2xl font-bold mt-4">Welcome back</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Sign in to access your synced services
@@ -212,6 +209,12 @@ function LoginContent() {
           <Link href="/signup" className="text-primary hover:underline">
             Sign up
           </Link>
+        </p>
+        <p className="text-center text-xs text-muted-foreground mt-3">
+          By signing in, you agree to our{' '}
+          <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>
+          {' '}and{' '}
+          <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
         </p>
       </div>
     </div>
