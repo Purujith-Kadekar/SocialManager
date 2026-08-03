@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { MessageCircle, Mail, Lock, User, ArrowRight, Loader2, Sparkles } from 'lucide-react'
@@ -12,6 +12,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupContent />
+    </Suspense>
+  )
+}
+
+function SignupContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
