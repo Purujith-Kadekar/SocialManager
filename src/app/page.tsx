@@ -22,7 +22,7 @@ export default function LandingPage() {
             <Link href="#recipes" className="hover:text-foreground transition-colors">Recipes</Link>
             <Link href="#api" className="hover:text-foreground transition-colors">API</Link>
             <a
-              href="https://github.com/ferdium/ferdium-app"
+              href="https://github.com/Purujith-Kadekar/SocialManager"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors flex items-center gap-1"
@@ -314,7 +314,7 @@ export default function LandingPage() {
                 <li><Link href="/dashboard" className="hover:text-foreground">User dashboard</Link></li>
                 <li>
                   <a
-                    href="https://github.com/ferdium/ferdium-app"
+                    href="https://github.com/Purujith-Kadekar/SocialManager"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-foreground"

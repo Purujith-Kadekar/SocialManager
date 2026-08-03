@@ -1,7 +1,18 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.1",
+  "name": "socialmanager-api",
+  "version": "1.0.0",
   "private": true,
+  "description": "Self-hosted recipe API for the SocialManager desktop app (Ferdium fork). Built with Next.js 16 + Supabase.",
+  "license": "MIT",
+  "homepage": "https://github.com/Purujith-Kadekar/SocialManager",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Purujith-Kadekar/SocialManager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Purujith-Kadekar/SocialManager/issues"
+  },
+  "author": "Purujith Kadekar",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

@@ -99,11 +99,24 @@ The "Add Service" screen will now show all 310 recipes from YOUR API.
 
 ## Deployment to Vercel
 
-1. Push this project to a GitHub repository
-2. Go to [vercel.com](https://vercel.com) and import the repo
-3. Add all environment variables from `.env.example` in the Vercel dashboard
+1. Push this project to GitHub: [https://github.com/Purujith-Kadekar/SocialManager](https://github.com/Purujith-Kadekar/SocialManager)
+2. Go to [vercel.com](https://vercel.com) → **Add New → Project** → import the `SocialManager` repo
+3. **Before clicking Deploy**, open **Settings → Environment Variables** and add every variable from `.env.example` (see list below). The build will fail without them.
 4. Set `NEXT_PUBLIC_APP_URL` to your Vercel URL (e.g., `https://your-app.vercel.app`)
-5. Deploy
+5. Click **Deploy**
+
+### Required env vars (set these in Vercel BEFORE deploying)
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | YES | Your Supabase project URL (e.g. `https://abcdefgh.supabase.co`) — no `/rest/v1/` suffix |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | YES | Supabase anon public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | YES | Server-only — never expose to the browser |
+| `SUPABASE_ADMIN_EMAILS` | YES | Comma-separated admin emails |
+| `NEXT_PUBLIC_APP_URL` | YES | Your Vercel deployment URL |
+| `SUPABASE_STORAGE_BUCKET` | optional | Defaults to `recipe-packages` |
+| `AUTH_SECRET` | optional | Needed only if you use NextAuth features |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | optional | Only for Google OAuth |
 
 After deployment:
 1. Update Supabase Auth settings:
