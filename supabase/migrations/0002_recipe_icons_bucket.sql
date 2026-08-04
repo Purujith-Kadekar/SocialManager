@@ -26,13 +26,14 @@ drop policy if exists "Only service role can upload recipe icons" on storage.obj
 create policy "Only service role can upload recipe icons"
   on storage.objects for insert
   to service_role
-  using (bucket_id = 'recipe-icons');
+  with check (bucket_id = 'recipe-icons');
 
 drop policy if exists "Only service role can update recipe icons" on storage.objects;
 create policy "Only service role can update recipe icons"
   on storage.objects for update
   to service_role
-  using (bucket_id = 'recipe-icons');
+  using (bucket_id = 'recipe-icons')
+  with check (bucket_id = 'recipe-icons');
 
 -- Only the server (service_role) can delete icons.
 drop policy if exists "Only service role can delete recipe icons" on storage.objects;
