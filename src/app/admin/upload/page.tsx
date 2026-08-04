@@ -45,6 +45,16 @@ export default async function AdminUploadPage() {
             />
           </div>
           <div>
+            <label className="block text-sm font-medium text-slate-300">Icon (optional)</label>
+            <input
+              type="file"
+              name="icon"
+              accept=".svg,.png,image/svg+xml,image/png"
+              className="mt-1 block w-full text-sm text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-gradient file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:opacity-90"
+            />
+            <p className="mt-1 text-xs text-slate-500">SVG or PNG. Shown in the desktop app&apos;s recipe list.</p>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-slate-300">.tar.gz file</label>
             <input
               type="file"

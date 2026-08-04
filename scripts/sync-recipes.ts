@@ -39,6 +39,9 @@ const RECIPES_SUBPATH     = 'recipes'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
 const bucket      = process.env.SUPABASE_STORAGE_BUCKET ?? 'recipe-packages'
+const iconBucket  = process.env.SUPABASE_ICON_BUCKET ?? 'recipe-icons'
+// Ferdium recipe folders ship an icon at the root — try these in order.
+const ICON_FILENAMES = ['icon.svg', 'icon.png']
 
 if (!supabaseUrl || !serviceKey) {
   console.error('❌ Missing env vars. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local')
@@ -84,6 +87,44 @@ function getAuthorString(author?: RecipePackageJson['author']): string | null {
   if (!author) return null
   if (typeof author === 'string') return author
   return author.name ?? author.url ?? null
+}
+
+/**
+ * Uploads a recipe's icon (icon.svg, falling back to icon.png) from its
+ * extracted folder to the PUBLIC recipe-icons bucket and returns the
+ * public URL, or null if the recipe ships no icon file.
+ *
+ * icon_url must point somewhere the desktop app can GET unauthenticated
+ * (it's rendered directly in an <img> tag) — the private recipe-packages
+ * bucket won't work here, which is why this uses a separate public bucket.
+ */
+async function uploadRecipeIcon(recipeId: string, recipeFolder: string): Promise<string | null> {
+  for (const filename of ICON_FILENAMES) {
+    const iconPath = join(recipeFolder, filename)
+    if (!existsSync(iconPath)) continue
+
+    const ext = filename.split('.').pop()
+    const storagePath = `${recipeId}.${ext}`
+    const contentType = ext === 'svg' ? 'image/svg+xml' : 'image/png'
+
+    const { error: uploadError } = await supabase
+      .storage
+      .from(iconBucket)
+      .upload(storagePath, readFileSync(iconPath), {
+        contentType,
+        upsert: true,
+      })
+
+    if (uploadError) {
+      console.log(`   ⚠️  Icon upload failed for ${recipeId}: ${uploadError.message}`)
+      return null
+    }
+
+    const { data } = supabase.storage.from(iconBucket).getPublicUrl(storagePath)
+    return data.publicUrl
+  }
+
+  return null
 }
 
 async function main() {
@@ -208,6 +249,7 @@ async function main() {
       const isFeatured = featuredIds.has(recipeId)
       const isOfficial = catalogIds.has(recipeId)
       const cfg = pkg.config ?? {}
+      const iconUrl = await uploadRecipeIcon(recipeId, recipeFolder)
 
       const { error: dbError } = await supabase
         .from('recipes')
@@ -218,7 +260,7 @@ async function main() {
           category: 'other',
           author: getAuthorString(pkg.author),
           website: null,
-          icon_url: null,
+          icon_url: iconUrl,
           is_featured: isFeatured,
           is_official: isOfficial,
           is_custom: false,

@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
+    const icon = formData.get('icon') as File | null
     const id = formData.get('id') as string | null
     const name = formData.get('name') as string | null
 
@@ -98,6 +99,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
+    // Icon upload (optional). Goes to the PUBLIC recipe-icons bucket since
+    // the desktop app loads it directly via <img src>, unauthenticated —
+    // unlike recipe-packages, which stays private behind signed URLs.
+    let iconUrl: string | null = null
+    if (icon && icon.size > 0) {
+      const iconBucket = process.env.SUPABASE_ICON_BUCKET ?? 'recipe-icons'
+      const ext = (icon.name.split('.').pop() || 'svg').toLowerCase()
+      const iconStoragePath = `${id}.${ext}`
+      const iconBuffer = Buffer.from(await icon.arrayBuffer())
+      const { error: iconUploadError } = await admin
+        .storage
+        .from(iconBucket)
+        .upload(iconStoragePath, iconBuffer, {
+          contentType: ext === 'svg' ? 'image/svg+xml' : (icon.type || 'image/png'),
+          upsert: true,
+        })
+
+      if (iconUploadError) {
+        // Non-fatal: the recipe itself still uploads fine without an icon.
+        console.error('Icon upload failed:', iconUploadError.message)
+      } else {
+        const { data } = admin.storage.from(iconBucket).getPublicUrl(iconStoragePath)
+        iconUrl = data.publicUrl
+      }
+    }
+
     // Insert into DB.
     const { data: recipe, error: dbError } = await admin
       .from('recipes')
@@ -107,6 +134,7 @@ export async function POST(request: NextRequest) {
         description: (formData.get('description') as string | null) ?? null,
         category: (formData.get('category') as string) ?? 'other',
         author: (formData.get('author') as string | null) ?? null,
+        icon_url: iconUrl,
         is_featured: false,
         is_official: false,
         is_custom: true,

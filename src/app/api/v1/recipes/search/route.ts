@@ -26,7 +26,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    const shaped = (data ?? []).map(r => ({
+      ...r,
+      icons: { svg: r.icon_url },
+    }))
+
+    return NextResponse.json(shaped)
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Server error' },

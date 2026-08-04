@@ -16,7 +16,16 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    // The desktop app's RecipePreview model reads `recipe.icons.svg`
+    // (an <img src={recipe.icons?.svg}>), not a flat `icon_url` string —
+    // so we mirror icon_url into that shape here. icon_url is kept too,
+    // for admin tooling and backwards compatibility.
+    const shaped = (data ?? []).map(r => ({
+      ...r,
+      icons: { svg: r.icon_url },
+    }))
+
+    return NextResponse.json(shaped)
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Server error' },
