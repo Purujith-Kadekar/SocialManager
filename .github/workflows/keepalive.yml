@@ -1,0 +1,38 @@
+name: Supabase Keep-Alive
+
+# Pings the deployed webapp's keep-alive endpoint once a day, which runs a
+# trivial real query against Supabase. Supabase's free tier auto-pauses a
+# project after ~7 days with no activity - this keeps it permanently
+# active without needing Vercel Cron (which requires a paid plan) and
+# without needing the desktop app to ever be opened.
+#
+# Completely free: GitHub Actions gives every repo scheduled workflows at
+# no cost (public repos: unlimited; private repos: within the free
+# monthly minutes included on every GitHub plan - this job takes a
+# couple seconds a day, nowhere close to any limit).
+
+on:
+  schedule:
+    # Runs at 03:00 UTC every day. GitHub's scheduler (like most free
+    # cron services) only guarantees "sometime within a bit of this
+    # time," not the exact minute - that's fine here, timing doesn't
+    # matter for this.
+    - cron: '0 3 * * *'
+  # Lets you manually trigger a run from the Actions tab, useful for
+  # testing this without waiting for the schedule.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keep-alive endpoint
+        run: |
+          response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            "https://social-manager-api.vercel.app/api/cron/keepalive")
+          echo "HTTP status: $response"
+          cat /tmp/response.json
+          if [ "$response" -ne 200 ]; then
+            echo "::error::Keep-alive ping failed with status $response"
+            exit 1
+          fi
