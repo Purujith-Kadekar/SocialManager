@@ -26,6 +26,12 @@ export default function HomePage() {
             <a href="#recipes" className="transition hover:text-white">Recipes</a>
             <a href="/api/v1/recipes" className="transition hover:text-white">API</a>
             <a
+              href="/download"
+              className="rounded-lg bg-indigo-gradient px-4 py-1.5 font-medium text-white transition hover:opacity-90"
+            >
+              Download
+            </a>
+            <a
               href="https://github.com/Purujith-Kadekar/SocialManager"
               target="_blank"
               rel="noreferrer"
