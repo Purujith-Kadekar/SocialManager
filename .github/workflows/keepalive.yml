@@ -29,7 +29,7 @@ jobs:
       - name: Ping keep-alive endpoint
         run: |
           response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            "https://social-manager-api.vercel.app/api/cron/keepalive")
+            "https://social-manager-api.vercel.app/api/v1/recipes")
           echo "HTTP status: $response"
           cat /tmp/response.json
           if [ "$response" -ne 200 ]; then
